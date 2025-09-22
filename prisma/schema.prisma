@@ -15,46 +15,69 @@ datasource db {
 }
 
 model User {
-  id                  String                @id @default(auto()) @map("_id") @db.ObjectId
-  name                String
-  email               String                @unique
-  password            String
-  address             String
-  phone               String
-  website             String
-  bio                 String
-  avatar              String
-  country             String
-  state               String
-  city                String
-  zip                 String
-  latitude            Float
-  longitude           Float
-  isActive            Boolean               @default(true)
-  isVerified          Boolean               @default(false)
-  isDeleted           Boolean               @default(false)
-  isArchived          Boolean               @default(false)
-  isSuspended         Boolean               @default(false)
-  isBlocked           Boolean               @default(false)
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  UserAndRoleRelation UserAndRoleRelation[]
-  UserSkillRelation   UserSkillRelation[]
+  id                     String                   @id @default(auto()) @map("_id") @db.ObjectId
+  name                   String
+  email                  String                   @unique
+  password               String
+  address                String?
+  phone                  String?
+  website                String?
+  bio                    String?
+  avatar                 String?
+  country                String?
+  state                  String?
+  city                   String?
+  zip                    String?
+  latitude               Float?
+  longitude              Float?
+  isFreelancer           Boolean                  @default(false)
+  isClient               Boolean                  @default(false)
+  isActive               Boolean                  @default(true)
+  isEmailVerified        Boolean                  @default(false)
+  isPhoneVerified        Boolean                  @default(false)
+  isDeleted              Boolean                  @default(false)
+  isArchived             Boolean                  @default(false)
+  isSuspended            Boolean                  @default(false)
+  isBlocked              Boolean                  @default(false)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  UserAndRoleRelation    UserAndRoleRelation[]
+  UserSkillRelation      UserSkillRelation[]
   // Back-relations for freelancer domain
-  freelancerProfile   FreelancerProfile?
-  portfolioItems      PortfolioItem[]
-  employments         Employment[]
-  educations          Education[]
-  certifications      Certification[]
-  languages           UserLanguage[]
-  services            Service[]
-  proposals           Proposal[]
-  freelancerContracts Contract[]            @relation("FreelancerContracts")
-  transactions        Transaction[]
-  withdrawals         Withdrawal[]
-  payoutMethods       PayoutMethod[]
-  jobs                Job[]
-  blogPosts           BlogPost[]
+  freelancerProfile      FreelancerProfile?
+  portfolioItems         PortfolioItem[]
+  employments            Employment[]
+  educations             Education[]
+  certifications         Certification[]
+  freelancingServices    FreelancingService[]
+  proposals              Proposal[]
+  freelancerContracts    Contract[]               @relation("FreelancerContracts")
+  transactions           Transaction[]
+  withdrawals            Withdrawal[]
+  payoutMethods          PayoutMethod[]
+  jobs                   Job[]
+  blogPosts              BlogPost[]
+  UserToLanguageRelation UserToLanguageRelation[]
+}
+
+model UserLanguage {
+  id                     String                   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                 String                   @db.ObjectId
+  language               String
+  level                  String
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  UserToLanguageRelation UserToLanguageRelation[]
+}
+
+model UserToLanguageRelation {
+  id         String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String       @db.ObjectId
+  languageId String       @db.ObjectId
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  user       User         @relation(fields: [userId], references: [id])
+  language   UserLanguage @relation(fields: [languageId], references: [id])
 }
 
 model Skill {
@@ -118,49 +141,49 @@ model FreelancerProfile {
 }
 
 model PortfolioItem {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  freelancerId      String   @db.ObjectId
-  title       String
-  description String
-  mediaUrls   String[]
-  projectUrl  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  freelancerId String   @db.ObjectId
+  title        String
+  description  String
+  mediaUrls    String[]
+  projectUrl   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   freelancer User @relation(fields: [freelancerId], references: [id])
 }
 
 model Employment {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  freelancerId      String    @db.ObjectId
-  company     String
-  role        String
-  startDate   DateTime
-  endDate     DateTime?
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  freelancerId String    @db.ObjectId
+  company      String
+  role         String
+  startDate    DateTime
+  endDate      DateTime?
+  description  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   freelancer User @relation(fields: [freelancerId], references: [id])
 }
 
 model Education {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
-  freelancerId    String    @db.ObjectId
-  school    String
-  degree    String?
-  field     String?
-  startDate DateTime?
-  endDate   DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  freelancerId String    @db.ObjectId
+  school       String
+  degree       String?
+  field        String?
+  startDate    DateTime?
+  endDate      DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   freelancer User @relation(fields: [freelancerId], references: [id])
 }
 
 model Certification {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  freelancerId        String    @db.ObjectId
+  freelancerId  String    @db.ObjectId
   name          String
   issuer        String?
   issuedAt      DateTime?
@@ -173,38 +196,27 @@ model Certification {
   freelancer User @relation(fields: [freelancerId], references: [id])
 }
 
-model UserLanguage {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
-  language  String
-  level     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id])
-}
-
-model Service {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  freelancerId      String   @db.ObjectId
-  title       String
-  description String
-  category    String
-  subcategory String?
-  isActive    Boolean  @default(true)
-  rating      Float?
-  ratingCount Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  freelancer     User             @relation(fields: [freelancerId], references: [id])
-  packages ServicePackage[]
-  reviews  ServiceReview[]
-}
-
-model ServicePackage {
+model FreelancingService {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  serviceId    String   @db.ObjectId
+  freelancerId String   @db.ObjectId
+  title        String
+  description  String
+  category     String
+  subcategory  String?
+  isActive     Boolean  @default(true)
+  rating       Float?
+  ratingCount  Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  freelancer User             @relation(fields: [freelancerId], references: [id])
+  packages   FreelancingServicePackage[]
+  reviews    FreelancingServiceReview[]
+}
+
+model FreelancingServicePackage {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  freelancingServiceId    String   @db.ObjectId
   tier         String
   name         String
   description  String
@@ -214,7 +226,7 @@ model ServicePackage {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  service Service @relation(fields: [serviceId], references: [id])
+  service FreelancingService @relation(fields: [freelancingServiceId], references: [id])
 }
 
 enum ProposalStatus {
@@ -224,16 +236,16 @@ enum ProposalStatus {
 }
 
 model Proposal {
-  id          String         @id @default(auto()) @map("_id") @db.ObjectId
-  freelancerId      String         @db.ObjectId
-  jobId       String         @db.ObjectId
-  coverLetter String
-  bidAmount   Float
-  bidType     String
-  attachments String[]
-  status      ProposalStatus @default(PENDING)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  freelancerId String         @db.ObjectId
+  jobId        String         @db.ObjectId
+  coverLetter  String
+  bidAmount    Float
+  bidType      String
+  attachments  String[]
+  status       ProposalStatus @default(PENDING)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   freelancer User @relation(fields: [freelancerId], references: [id])
 }
@@ -262,23 +274,23 @@ model Contract {
   freelancer User @relation("FreelancerContracts", fields: [freelancerId], references: [id])
 }
 
-model ServiceReview {
+model FreelancingServiceReview {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  serviceId String   @db.ObjectId
+  freelancingServiceId String   @db.ObjectId
   clientId  String   @db.ObjectId
   rating    Int
   comment   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  service Service @relation(fields: [serviceId], references: [id])
+  freelancingService FreelancingService @relation(fields: [freelancingServiceId], references: [id])
 }
 
 model Transaction {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   userId     String   @db.ObjectId
   contractId String?  @db.ObjectId
-  serviceId  String?  @db.ObjectId
+  freelancingServiceId  String?  @db.ObjectId
   type       String
   amount     Float
   currency   String   @default("USD")
@@ -329,13 +341,13 @@ model Job {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  client User @relation(fields: [clientId], references: [id])
+  client           User               @relation(fields: [clientId], references: [id])
   JobSkillRelation JobSkillRelation[]
 }
 
 model BlogPost {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  authorId    String   @db.ObjectId
+  authorId  String   @db.ObjectId
   title     String
   content   String
   createdAt DateTime @default(now())
