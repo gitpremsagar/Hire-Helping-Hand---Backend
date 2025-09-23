@@ -35,6 +35,11 @@ const verifyPhoneSchema = z.object({
   code: z.string().min(4, "Verification code must be at least 4 digits"),
 });
 
+const setUserRoleSchema = z.object({
+  userId: z.string().min(1, "User ID is required"),
+  roleId: z.string().min(1, "Role ID is required"),
+});
+
 export {
   signUpSchema,
   loginSchema,
@@ -42,4 +47,5 @@ export {
   resetPasswordSchema,
   verifyEmailSchema,
   verifyPhoneSchema,
+  setUserRoleSchema,
 };

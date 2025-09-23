@@ -529,3 +529,40 @@ export const verifyPhone = async (req: Request, res: Response): Promise<void> =>
     handleError(error, res, "Failed to verify phone number");
   }
 };
+
+// Set user role controller
+export const setUserRole = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId, roleId } = req.body;
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    
+    if (!user) {
+      throw ErrorTypes.NOT_FOUND("User");
+    }
+
+    // Check if role exists
+    const role = await prisma.userRole.findUnique({
+      where: { id: roleId },
+    });
+    
+    if (!role) {
+      throw ErrorTypes.NOT_FOUND("Role");
+    }
+
+    // Set user role
+    const userRole = await prisma.userAndRoleRelation.create({
+      data: {
+        userId,
+        roleId,
+      },
+    });
+    
+    sendSuccess(res, "User role set successfully", userRole);
+  } catch (error) {
+    handleError(error, res, "Failed to set user role");
+  }
+};
