@@ -5,7 +5,7 @@ import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/cont
 // Create a new service category
 export const createServiceCategory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description } = req.body;
+    const { name, description, isNew } = req.body;
 
     // Check if service category with the same name already exists
     const existingCategory = await prisma.serviceCategory.findFirst({
@@ -26,11 +26,13 @@ export const createServiceCategory = async (req: Request, res: Response): Promis
       data: {
         name,
         description,
+        isNew: isNew ?? false,
       },
       select: {
         id: true,
         name: true,
         description: true,
+        isNew: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -87,6 +89,7 @@ export const getServiceCategories = async (req: Request, res: Response): Promise
           id: true,
           name: true,
           description: true,
+          isNew: true,
           createdAt: true,
           updatedAt: true,
           _count: {
@@ -135,6 +138,7 @@ export const getServiceCategoryById = async (req: Request, res: Response): Promi
         id: true,
         name: true,
         description: true,
+        isNew: true,
         createdAt: true,
         updatedAt: true,
         ServiceSubCategory: {
@@ -142,6 +146,7 @@ export const getServiceCategoryById = async (req: Request, res: Response): Promi
             id: true,
             name: true,
             description: true,
+            isNew: true,
             createdAt: true,
           },
         },
@@ -168,7 +173,7 @@ export const getServiceCategoryById = async (req: Request, res: Response): Promi
 export const updateServiceCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).validatedParams as { id: string };
-    const { name, description } = req.body;
+    const { name, description, isNew } = req.body;
 
     // Check if service category exists
     const existingCategory = await prisma.serviceCategory.findUnique({
@@ -204,11 +209,13 @@ export const updateServiceCategory = async (req: Request, res: Response): Promis
       data: {
         ...(name && { name }),
         ...(description && { description }),
+        ...(isNew !== undefined && { isNew }),
       },
       select: {
         id: true,
         name: true,
         description: true,
+        isNew: true,
         createdAt: true,
         updatedAt: true,
       },

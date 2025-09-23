@@ -5,5 +5,6 @@ declare const validateForgotPasswordJson: (req: Request, res: Response, next: Ne
 declare const validateResetPasswordJson: (req: Request, res: Response, next: NextFunction) => void;
 declare const validateVerifyEmailJson: (req: Request, res: Response, next: NextFunction) => void;
 declare const validateVerifyPhoneJson: (req: Request, res: Response, next: NextFunction) => void;
-export { validateSignUpJson, validateLoginJson, validateForgotPasswordJson, validateResetPasswordJson, validateVerifyEmailJson, validateVerifyPhoneJson };
+declare const validateSetUserRoleJson: (req: Request, res: Response, next: NextFunction) => void;
+export { validateSignUpJson, validateLoginJson, validateForgotPasswordJson, validateResetPasswordJson, validateVerifyEmailJson, validateVerifyPhoneJson, validateSetUserRoleJson };
 //# sourceMappingURL=auth.validation.middlewares.d.ts.map

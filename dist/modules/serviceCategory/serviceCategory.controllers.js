@@ -3,7 +3,7 @@ import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/cont
 // Create a new service category
 export const createServiceCategory = async (req, res) => {
     try {
-        const { name, description } = req.body;
+        const { name, description, isNew } = req.body;
         // Check if service category with the same name already exists
         const existingCategory = await prisma.serviceCategory.findFirst({
             where: {
@@ -21,11 +21,13 @@ export const createServiceCategory = async (req, res) => {
             data: {
                 name,
                 description,
+                isNew: isNew ?? false,
             },
             select: {
                 id: true,
                 name: true,
                 description: true,
+                isNew: true,
                 createdAt: true,
                 updatedAt: true,
             },
@@ -39,7 +41,7 @@ export const createServiceCategory = async (req, res) => {
 // Get all service categories with pagination and search
 export const getServiceCategories = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search } = req.validatedQuery;
+        const { page, limit, search } = req.validatedQuery;
         // Calculate skip value for pagination
         const skip = (page - 1) * limit;
         // Build where clause for search
@@ -74,6 +76,7 @@ export const getServiceCategories = async (req, res) => {
                     id: true,
                     name: true,
                     description: true,
+                    isNew: true,
                     createdAt: true,
                     updatedAt: true,
                     _count: {
@@ -98,8 +101,8 @@ export const getServiceCategories = async (req, res) => {
             pagination: {
                 currentPage: page,
                 totalPages,
-                totalCount,
-                limit,
+                totalItems: totalCount,
+                itemsPerPage: limit,
                 hasNextPage,
                 hasPrevPage,
             },
@@ -119,6 +122,7 @@ export const getServiceCategoryById = async (req, res) => {
                 id: true,
                 name: true,
                 description: true,
+                isNew: true,
                 createdAt: true,
                 updatedAt: true,
                 ServiceSubCategory: {
@@ -126,6 +130,7 @@ export const getServiceCategoryById = async (req, res) => {
                         id: true,
                         name: true,
                         description: true,
+                        isNew: true,
                         createdAt: true,
                     },
                 },
@@ -150,7 +155,7 @@ export const getServiceCategoryById = async (req, res) => {
 export const updateServiceCategory = async (req, res) => {
     try {
         const { id } = req.validatedParams;
-        const { name, description } = req.body;
+        const { name, description, isNew } = req.body;
         // Check if service category exists
         const existingCategory = await prisma.serviceCategory.findUnique({
             where: { id },
@@ -181,11 +186,13 @@ export const updateServiceCategory = async (req, res) => {
             data: {
                 ...(name && { name }),
                 ...(description && { description }),
+                ...(isNew !== undefined && { isNew }),
             },
             select: {
                 id: true,
                 name: true,
                 description: true,
+                isNew: true,
                 createdAt: true,
                 updatedAt: true,
             },

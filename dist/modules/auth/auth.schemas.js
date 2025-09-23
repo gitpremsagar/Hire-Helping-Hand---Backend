@@ -29,5 +29,9 @@ const verifyPhoneSchema = z.object({
     phone: z.string().min(10, "Phone number must be at least 10 digits"),
     code: z.string().min(4, "Verification code must be at least 4 digits"),
 });
-export { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, };
+const setUserRoleSchema = z.object({
+    userId: z.string().min(1, "User ID is required"),
+    roleId: z.string().min(1, "Role ID is required"),
+});
+export { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, setUserRoleSchema, };
 //# sourceMappingURL=auth.schemas.js.map

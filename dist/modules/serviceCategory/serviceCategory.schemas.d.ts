@@ -2,10 +2,12 @@ import { z } from "zod";
 declare const createServiceCategorySchema: z.ZodObject<{
     name: z.ZodString;
     description: z.ZodString;
+    isNew: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
 }, z.core.$strip>;
 declare const updateServiceCategorySchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     description: z.ZodOptional<z.ZodString>;
+    isNew: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;
 declare const serviceCategoryIdSchema: z.ZodObject<{
     id: z.ZodString;

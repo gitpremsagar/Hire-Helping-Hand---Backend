@@ -25,5 +25,9 @@ declare const verifyPhoneSchema: z.ZodObject<{
     phone: z.ZodString;
     code: z.ZodString;
 }, z.core.$strip>;
-export { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, };
+declare const setUserRoleSchema: z.ZodObject<{
+    userId: z.ZodString;
+    roleId: z.ZodString;
+}, z.core.$strip>;
+export { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, setUserRoleSchema, };
 //# sourceMappingURL=auth.schemas.d.ts.map

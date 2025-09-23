@@ -8,4 +8,5 @@ export declare const forgotPassword: (req: Request, res: Response) => Promise<vo
 export declare const resetPassword: (req: Request, res: Response) => Promise<void>;
 export declare const verifyEmail: (req: Request, res: Response) => Promise<void>;
 export declare const verifyPhone: (req: Request, res: Response) => Promise<void>;
+export declare const setUserRole: (req: Request, res: Response) => Promise<void>;
 //# sourceMappingURL=auth.controllers.d.ts.map
