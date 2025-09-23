@@ -13,8 +13,12 @@ app.use(express.json());
 // API routes
 app.use("/api/v1/auth", authRoutes);
 
-app.get("/", (req, res) => {
-  res.send("Hello World");
+app.get("/api/v1", (req, res) => {
+  res.send("Hello From API");
+});
+
+app.get("/",(req, res) => {
+  res.send("Hello From Hire Helping Hand Root Route!");
 });
 
 // Health check endpoint

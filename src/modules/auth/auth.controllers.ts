@@ -39,15 +39,14 @@ const generateRefreshToken = (userId: string): string => {
   }
 };
 
-// Helper function to revoke all user refresh tokens
-const revokeAllUserRefreshTokens = async (userId: string): Promise<void> => {
+// Helper function to delete all user refresh tokens
+const deleteAllUserRefreshTokens = async (userId: string): Promise<void> => {
   try {
-    await prisma.refreshToken.updateMany({
-      where: { userId, isRevoked: false },
-      data: { isRevoked: true },
+    await prisma.refreshToken.deleteMany({
+      where: { userId },
     });
   } catch (error) {
-    throw new AppError("Failed to revoke user refresh tokens", 500);
+    throw new AppError("Failed to delete user refresh tokens", 500);
   }
 };
 
@@ -221,10 +220,9 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     const refreshToken = req.cookies?.refreshToken;
     
     if (refreshToken) {
-      // Revoke the specific refresh token
-      await prisma.refreshToken.updateMany({
+      // Delete the specific refresh token from database
+      await prisma.refreshToken.deleteMany({
         where: { refreshToken: refreshToken },
-        data: { isRevoked: true },
       });
     }
     
@@ -318,10 +316,9 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       // Generate new refresh token (refresh token rotation)
       const newRefreshToken = generateRefreshToken(user.id);
 
-      // Revoke old refresh token
-      await tx.refreshToken.updateMany({
+      // Delete old refresh token
+      await tx.refreshToken.deleteMany({
         where: { refreshToken: refreshToken },
-        data: { isRevoked: true },
       });
 
       // Save new refresh token
