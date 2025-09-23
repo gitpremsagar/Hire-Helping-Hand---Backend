@@ -1,10 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema } from "./auth.schemas.js";
+import { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema } from "./auth.schemas.js";
 
-const validateRegisterJson = (req: Request, res: Response, next: NextFunction) => {
+const validateSignUpJson = (req: Request, res: Response, next: NextFunction) => {
     try {
-        const validatedData = registerSchema.parse(req.body);
+        const validatedData = signUpSchema.parse(req.body);
         req.body = validatedData;
         next();
     } catch (error) {
@@ -86,4 +86,4 @@ const validateVerifyPhoneJson = (req: Request, res: Response, next: NextFunction
     }
 };
 
-export { validateRegisterJson, validateLoginJson, validateForgotPasswordJson, validateResetPasswordJson, validateVerifyEmailJson, validateVerifyPhoneJson };
+export { validateSignUpJson, validateLoginJson, validateForgotPasswordJson, validateResetPasswordJson, validateVerifyEmailJson, validateVerifyPhoneJson };

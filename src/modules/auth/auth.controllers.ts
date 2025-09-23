@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
-import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/errorHandler.js";
+import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
 
 const prisma = new PrismaClient();
 
@@ -45,7 +45,7 @@ const comparePassword = async (password: string, hashedPassword: string): Promis
 };
 
 // Register controller
-export const register = async (req: Request, res: Response): Promise<void> => {
+export const signUp = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password, isFreelancer, isClient } = req.body;
 

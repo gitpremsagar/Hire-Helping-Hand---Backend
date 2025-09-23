@@ -1,11 +1,11 @@
 import express from "express";
-import { register, login, logout, forgotPassword, resetPassword, verifyEmail, verifyPhone } from "./auth.controllers.js";
-import { validateRegisterJson, validateLoginJson, validateForgotPasswordJson, validateResetPasswordJson, validateVerifyEmailJson, validateVerifyPhoneJson } from "./auth.validation.middlewares.js";
+import { signUp, login, logout, forgotPassword, resetPassword, verifyEmail, verifyPhone } from "./auth.controllers.js";
+import { validateSignUpJson, validateLoginJson, validateForgotPasswordJson, validateResetPasswordJson, validateVerifyEmailJson, validateVerifyPhoneJson } from "./auth.validation.middlewares.js";
 
 const authRoutes = express.Router();
-authRoutes.post("/register", validateRegisterJson, register);
-authRoutes.post("/login", login);
-authRoutes.post("/logout", logout);
+authRoutes.post("/sign-up", validateSignUpJson, signUp);
+authRoutes.post("/log-in", login);
+authRoutes.post("/log-out", logout);
 authRoutes.post("/forgot-password", forgotPassword);
 authRoutes.post("/reset-password", resetPassword);
 authRoutes.post("/verify-email", verifyEmail);
