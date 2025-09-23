@@ -2,11 +2,9 @@ import "dotenv/config";
 import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
+import { prisma, withTransaction } from "../../lib/prisma.js";
 import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
 import { appConfig, getRefreshTokenExpirationDate } from "../../config/app.config.js";
-
-const prisma = new PrismaClient();
 
 
 // Helper function to generate access token
@@ -38,35 +36,6 @@ const generateRefreshToken = (userId: string): string => {
     );
   } catch (error) {
     throw new AppError("Failed to generate refresh token", 500);
-  }
-};
-
-// Helper function to save refresh token to database
-const saveRefreshToken = async (userId: string, token: string): Promise<void> => {
-  try {
-    const expiresAt = getRefreshTokenExpirationDate();
-
-    await prisma.refreshToken.create({
-      data: {
-        userId,
-        token,
-        expiresAt,
-      },
-    });
-  } catch (error) {
-    throw new AppError("Failed to save refresh token", 500);
-  }
-};
-
-// Helper function to revoke refresh token
-const revokeRefreshToken = async (token: string): Promise<void> => {
-  try {
-    await prisma.refreshToken.updateMany({
-      where: { token },
-      data: { isRevoked: true },
-    });
-  } catch (error) {
-    throw new AppError("Failed to revoke refresh token", 500);
   }
 };
 
@@ -117,39 +86,55 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        isFreelancer,
-        isClient,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isFreelancer: true,
-        isClient: true,
-        isEmailVerified: true,
-        isPhoneVerified: true,
-        createdAt: true,
-      },
+    // Generate tokens
+    const accessToken = generateAccessToken("temp"); // We'll update this after user creation
+    const refreshToken = generateRefreshToken("temp"); // We'll update this after user creation
+
+    // Use transaction to ensure data consistency
+    const result = await withTransaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          isFreelancer,
+          isClient,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isFreelancer: true,
+          isClient: true,
+          isEmailVerified: true,
+          isPhoneVerified: true,
+          createdAt: true,
+        },
+      });
+
+      // Generate tokens with actual user ID
+      const actualAccessToken = generateAccessToken(user.id);
+      const actualRefreshToken = generateRefreshToken(user.id);
+
+      // Save refresh token to database
+      const expiresAt = getRefreshTokenExpirationDate();
+      await tx.refreshToken.create({
+        data: {
+          userId: user.id,
+          token: actualRefreshToken,
+          expiresAt,
+        },
+      });
+
+      return {
+        user,
+        accessToken: actualAccessToken,
+        refreshToken: actualRefreshToken,
+      };
     });
 
-    // Generate access and refresh tokens
-    const accessToken = generateAccessToken(user.id);
-    const refreshToken = generateRefreshToken(user.id);
-    
-    // Save refresh token to database
-    await saveRefreshToken(user.id, refreshToken);
-
-    sendSuccess(res, "User signed up successfully", {
-      user,
-      accessToken,
-      refreshToken,
-    }, 201);
+    sendSuccess(res, "User signed up successfully", result, 201);
   } catch (error) {
     handleError(error, res, "Failed to sign up user");
   }
@@ -180,20 +165,35 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       throw ErrorTypes.INVALID_CREDENTIALS();
     }
 
-    // Generate access and refresh tokens
-    const accessToken = generateAccessToken(user.id);
-    const refreshToken = generateRefreshToken(user.id);
-    
-    // Save refresh token to database
-    await saveRefreshToken(user.id, refreshToken);
+    // Use transaction to ensure token creation is atomic
+    const result = await withTransaction(async (tx) => {
+      // Generate access and refresh tokens
+      const accessToken = generateAccessToken(user.id);
+      const refreshToken = generateRefreshToken(user.id);
+      
+      // Save refresh token to database
+      const expiresAt = getRefreshTokenExpirationDate();
+      await tx.refreshToken.create({
+        data: {
+          userId: user.id,
+          token: refreshToken,
+          expiresAt,
+        },
+      });
+
+      return {
+        accessToken,
+        refreshToken,
+      };
+    });
 
     // Return user data without password
     const { password: _, ...userWithoutPassword } = user;
 
     sendSuccess(res, "Login successful", {
       user: userWithoutPassword,
-      accessToken,
-      refreshToken,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     });
   } catch (error) {
     handleError(error, res, "Failed to login");
@@ -207,7 +207,10 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     
     if (refreshToken) {
       // Revoke the specific refresh token
-      await revokeRefreshToken(refreshToken);
+      await prisma.refreshToken.updateMany({
+        where: { token: refreshToken },
+        data: { isRevoked: true },
+      });
     }
     
     sendSuccess(res, "Logout successful");
@@ -284,20 +287,37 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       throw ErrorTypes.ACCOUNT_INACTIVE();
     }
 
-    // Generate new access token
-    const newAccessToken = generateAccessToken(user.id);
+    // Use transaction to ensure token rotation is atomic
+    const result = await withTransaction(async (tx) => {
+      // Generate new access token
+      const newAccessToken = generateAccessToken(user.id);
 
-    // Optionally generate new refresh token (refresh token rotation)
-    const newRefreshToken = generateRefreshToken(user.id);
+      // Generate new refresh token (refresh token rotation)
+      const newRefreshToken = generateRefreshToken(user.id);
 
-    // Revoke old refresh token and save new one
-    await revokeRefreshToken(refreshToken);
-    await saveRefreshToken(user.id, newRefreshToken);
+      // Revoke old refresh token
+      await tx.refreshToken.updateMany({
+        where: { token: refreshToken },
+        data: { isRevoked: true },
+      });
 
-    sendSuccess(res, "Token refreshed successfully", {
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
+      // Save new refresh token
+      const expiresAt = getRefreshTokenExpirationDate();
+      await tx.refreshToken.create({
+        data: {
+          userId: user.id,
+          token: newRefreshToken,
+          expiresAt,
+        },
+      });
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      };
     });
+
+    sendSuccess(res, "Token refreshed successfully", result);
   } catch (error) {
     handleError(error, res, "Failed to refresh token");
   }

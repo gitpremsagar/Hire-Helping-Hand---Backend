@@ -1,10 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../lib/prisma.js";
 import { AppError, ErrorTypes } from "../utils/controllerErrorHandler.js";
 import { appConfig } from "../config/app.config.js";
-
-const prisma = new PrismaClient();
 
 // Extend Request interface to include user
 declare global {
