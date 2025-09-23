@@ -24,15 +24,25 @@ const generateAccessToken = (userId: string): string => {
 };
 
 // Helper function to generate refresh token
-const generateRefreshToken = (userId: string): string => {
+const generateRefreshToken = (userId: string, expiresAt?: Date): string => {
   try {
     if (!appConfig.jwt.refreshToken.secret) {
       throw new AppError("JWT refresh secret is not configured", 500);
     }
+    
+    // If expiresAt is provided, calculate the time difference for JWT expiration
+    let signOptions: jwt.SignOptions;
+    if (expiresAt) {
+      const timeUntilExpiry = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+      signOptions = { expiresIn: timeUntilExpiry } as jwt.SignOptions;
+    } else {
+      signOptions = { expiresIn: appConfig.jwt.refreshToken.expiresIn } as jwt.SignOptions;
+    }
+    
     return jwt.sign(
       { userId, type: "refresh" }, 
       appConfig.jwt.refreshToken.secret as string, 
-      { expiresIn: appConfig.jwt.refreshToken.expiresIn } as jwt.SignOptions
+      signOptions
     );
   } catch (error) {
     throw new AppError("Failed to generate refresh token", 500);
@@ -313,21 +323,20 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       // Generate new access token
       const newAccessToken = generateAccessToken(user.id);
 
-      // Generate new refresh token (refresh token rotation)
-      const newRefreshToken = generateRefreshToken(user.id);
+      // Generate new refresh token using the old token's expiry date (refresh token rotation)
+      const newRefreshToken = generateRefreshToken(user.id, tokenRecord.expiresAt);
 
       // Delete old refresh token
       await tx.refreshToken.deleteMany({
         where: { refreshToken: refreshToken },
       });
 
-      // Save new refresh token
-      const expiresAt = getRefreshTokenExpirationDate();
+      // Save new refresh token with the same expiry as the old one
       await tx.refreshToken.create({
         data: {
           userId: user.id,
           refreshToken: newRefreshToken,
-          expiresAt,
+          expiresAt: tokenRecord.expiresAt,
         },
       });
 
