@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { disconnectPrisma, checkDatabaseConnection } from "./lib/prisma.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import serviceCategoryRoutes from "./modules/serviceCategory/serviceCategory.routes.js";
+import serviceSubCategoryRoutes from "./modules/serviceSubCategory/serviceSubCategory.routes.js";
 import userRoleRoutes from "./modules/userRole/userRole.routes.js";
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 // API routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/service-categories", serviceCategoryRoutes);
+app.use("/api/v1/service-subcategories", serviceSubCategoryRoutes);
 app.use("/api/v1/user-roles", userRoleRoutes);
 
 app.get("/api/v1", (req, res) => {
