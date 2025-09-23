@@ -3,6 +3,7 @@ declare const signUpSchema: z.ZodObject<{
     name: z.ZodString;
     email: z.ZodEmail;
     password: z.ZodString;
+    confirmPassword: z.ZodString;
     isFreelancer: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     isClient: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
 }, z.core.$strip>;

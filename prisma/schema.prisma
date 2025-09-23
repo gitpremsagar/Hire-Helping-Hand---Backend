@@ -59,6 +59,7 @@ model User {
   blogPosts              BlogPost[]
   UserToLanguageRelation UserToLanguageRelation[]
   refreshTokens          RefreshToken[]
+  contracts              Contract[]               @relation("ClientContracts")
 }
 
 model UserLanguage {
@@ -198,21 +199,26 @@ model Certification {
 }
 
 model FreelancingService {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  freelancerId String   @db.ObjectId
-  title        String
-  description  String
-  category     String
-  subcategory  String?
-  isActive     Boolean  @default(true)
-  rating       Float?
-  ratingCount  Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  freelancerId         String   @db.ObjectId
+  title                String
+  description          String
+  category             String
+  serviceCategoryId    String   @db.ObjectId
+  serviceSubCategoryId String   @db.ObjectId
+  subcategory          String?
+  isActive             Boolean  @default(true)
+  rating               Float?
+  ratingCount          Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  freelancer User                        @relation(fields: [freelancerId], references: [id])
-  packages   FreelancingServicePackage[]
-  reviews    FreelancingServiceReview[]
+  freelancer         User                        @relation(fields: [freelancerId], references: [id])
+  packages           FreelancingServicePackage[]
+  reviews            FreelancingServiceReview[]
+  contracts          Contract[]
+  ServiceCategory    ServiceCategory             @relation(fields: [serviceCategoryId], references: [id])
+  ServiceSubCategory ServiceSubCategory          @relation(fields: [serviceSubCategoryId], references: [id])
 }
 
 model FreelancingServicePackage {
@@ -240,6 +246,7 @@ model Proposal {
   id           String         @id @default(auto()) @map("_id") @db.ObjectId
   freelancerId String         @db.ObjectId
   jobId        String         @db.ObjectId
+  contractId   String?        @db.ObjectId
   coverLetter  String
   bidAmount    Float
   bidType      String
@@ -248,7 +255,9 @@ model Proposal {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
-  freelancer User @relation(fields: [freelancerId], references: [id])
+  freelancer User       @relation(fields: [freelancerId], references: [id])
+  Job        Job        @relation(fields: [jobId], references: [id])
+  Contract   Contract[]
 }
 
 enum ContractStatus {
@@ -258,21 +267,25 @@ enum ContractStatus {
 }
 
 model Contract {
-  id               String         @id @default(auto()) @map("_id") @db.ObjectId
-  clientId         String         @db.ObjectId
-  freelancerId     String         @db.ObjectId
-  jobId            String?        @db.ObjectId
-  gigId            String?        @db.ObjectId
-  proposalId       String?        @db.ObjectId
-  type             String
-  status           ContractStatus @default(ACTIVE)
-  startDate        DateTime       @default(now())
-  endDate          DateTime?
-  totalFixedAmount Float?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                         String         @id @default(auto()) @map("_id") @db.ObjectId
+  clientId                   String         @db.ObjectId
+  freelancerId               String         @db.ObjectId
+  jobId                      String?        @unique @db.ObjectId // we will have jobId only if the contract is formed for a job and the freelancer's proposal is accepted
+  acceptedProposalId         String?        @db.ObjectId // we will have proposalId only if proposal of a freelancer is accepted
+  boughtFreelancingServiceId String?        @db.ObjectId // we will have serviceId only if the contract is formed because client bought a FreelancingService
+  type                       String
+  status                     ContractStatus @default(ACTIVE)
+  startDate                  DateTime       @default(now())
+  endDate                    DateTime?
+  totalFixedAmount           Float?
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
 
-  freelancer User @relation("FreelancerContracts", fields: [freelancerId], references: [id])
+  freelancer               User                @relation("FreelancerContracts", fields: [freelancerId], references: [id])
+  client                   User                @relation("ClientContracts", fields: [clientId], references: [id])
+  job                      Job?                @relation(fields: [jobId], references: [id])
+  boughtFreelancingService FreelancingService? @relation(fields: [boughtFreelancingServiceId], references: [id])
+  proposal                 Proposal?           @relation(fields: [acceptedProposalId], references: [id])
 }
 
 model FreelancingServiceReview {
@@ -332,18 +345,26 @@ model PayoutMethod {
 }
 
 model Job {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  clientId     String   @db.ObjectId
-  title        String
-  requirements String
-  attachments  String[]
-  budget       Float
-  deadline     DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId             String   @db.ObjectId
+  title                String
+  requirements         String
+  attachments          String[]
+  budget               Float
+  deadline             DateTime
+  serviceCategoryId    String   @db.ObjectId
+  serviceSubCategoryId String   @db.ObjectId
+  contractId           String?  @db.ObjectId // we will have contractId only if a proposal of a freelancer is accepted
+  acceptedProposalId   String?  @db.ObjectId // we will have acceptedProposalId only if a proposal of a freelancer is accepted
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  client           User               @relation(fields: [clientId], references: [id])
-  JobSkillRelation JobSkillRelation[]
+  client             User               @relation(fields: [clientId], references: [id])
+  JobSkillRelation   JobSkillRelation[]
+  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
+  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
+  Contract           Contract?
+  proposals          Proposal[]
 }
 
 model BlogPost {
@@ -367,4 +388,45 @@ model RefreshToken {
   updatedAt    DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PhoneVerificationToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ServiceCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ServiceSubCategory ServiceSubCategory[]
+  FreelancingService FreelancingService[]
+  Job                Job[]
+}
+
+model ServiceSubCategory {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  name              String
+  serviceCategoryId String   @db.ObjectId
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  ServiceCategory    ServiceCategory      @relation(fields: [serviceCategoryId], references: [id])
+  FreelancingService FreelancingService[]
+  Job                Job[]
 }

@@ -17,27 +17,35 @@ const generateAccessToken = (userId) => {
     }
 };
 // Helper function to generate refresh token
-const generateRefreshToken = (userId) => {
+const generateRefreshToken = (userId, expiresAt) => {
     try {
         if (!appConfig.jwt.refreshToken.secret) {
             throw new AppError("JWT refresh secret is not configured", 500);
         }
-        return jwt.sign({ userId, type: "refresh" }, appConfig.jwt.refreshToken.secret, { expiresIn: appConfig.jwt.refreshToken.expiresIn });
+        // If expiresAt is provided, calculate the time difference for JWT expiration
+        let signOptions;
+        if (expiresAt) {
+            const timeUntilExpiry = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+            signOptions = { expiresIn: timeUntilExpiry };
+        }
+        else {
+            signOptions = { expiresIn: appConfig.jwt.refreshToken.expiresIn };
+        }
+        return jwt.sign({ userId, type: "refresh" }, appConfig.jwt.refreshToken.secret, signOptions);
     }
     catch (error) {
         throw new AppError("Failed to generate refresh token", 500);
     }
 };
-// Helper function to revoke all user refresh tokens
-const revokeAllUserRefreshTokens = async (userId) => {
+// Helper function to delete all user refresh tokens
+const deleteAllUserRefreshTokens = async (userId) => {
     try {
-        await prisma.refreshToken.updateMany({
-            where: { userId, isRevoked: false },
-            data: { isRevoked: true },
+        await prisma.refreshToken.deleteMany({
+            where: { userId },
         });
     }
     catch (error) {
-        throw new AppError("Failed to revoke user refresh tokens", 500);
+        throw new AppError("Failed to delete user refresh tokens", 500);
     }
 };
 // Helper function to hash password
@@ -190,10 +198,9 @@ export const logout = async (req, res) => {
         // Get refresh token from HTTP-only cookie
         const refreshToken = req.cookies?.refreshToken;
         if (refreshToken) {
-            // Revoke the specific refresh token
-            await prisma.refreshToken.updateMany({
+            // Delete the specific refresh token from database
+            await prisma.refreshToken.deleteMany({
                 where: { refreshToken: refreshToken },
-                data: { isRevoked: true },
             });
         }
         // Clear the refresh token cookie
@@ -272,20 +279,18 @@ export const refreshToken = async (req, res) => {
         const result = await withTransaction(async (tx) => {
             // Generate new access token
             const newAccessToken = generateAccessToken(user.id);
-            // Generate new refresh token (refresh token rotation)
-            const newRefreshToken = generateRefreshToken(user.id);
-            // Revoke old refresh token
-            await tx.refreshToken.updateMany({
+            // Generate new refresh token using the old token's expiry date (refresh token rotation)
+            const newRefreshToken = generateRefreshToken(user.id, tokenRecord.expiresAt);
+            // Delete old refresh token
+            await tx.refreshToken.deleteMany({
                 where: { refreshToken: refreshToken },
-                data: { isRevoked: true },
             });
-            // Save new refresh token
-            const expiresAt = getRefreshTokenExpirationDate();
+            // Save new refresh token with the same expiry as the old one
             await tx.refreshToken.create({
                 data: {
                     userId: user.id,
                     refreshToken: newRefreshToken,
-                    expiresAt,
+                    expiresAt: tokenRecord.expiresAt,
                 },
             });
             return {
