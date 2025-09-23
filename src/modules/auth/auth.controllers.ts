@@ -86,10 +86,6 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Generate tokens
-    const accessToken = generateAccessToken("temp"); // We'll update this after user creation
-    const refreshToken = generateRefreshToken("temp"); // We'll update this after user creation
-
     // Use transaction to ensure data consistency
     const result = await withTransaction(async (tx) => {
       // Create user
@@ -114,23 +110,23 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
       });
 
       // Generate tokens with actual user ID
-      const actualAccessToken = generateAccessToken(user.id);
-      const actualRefreshToken = generateRefreshToken(user.id);
+      const accessToken = generateAccessToken(user.id);
+      const refreshToken = generateRefreshToken(user.id);
 
       // Save refresh token to database
       const expiresAt = getRefreshTokenExpirationDate();
       await tx.refreshToken.create({
         data: {
           userId: user.id,
-          token: actualRefreshToken,
+          refreshToken,
           expiresAt,
         },
       });
 
       return {
         user,
-        accessToken: actualAccessToken,
-        refreshToken: actualRefreshToken,
+        accessToken,
+        refreshToken,
       };
     });
 
@@ -176,7 +172,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       await tx.refreshToken.create({
         data: {
           userId: user.id,
-          token: refreshToken,
+          refreshToken,
           expiresAt,
         },
       });
@@ -208,7 +204,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     if (refreshToken) {
       // Revoke the specific refresh token
       await prisma.refreshToken.updateMany({
-        where: { token: refreshToken },
+        where: { refreshToken: refreshToken },
         data: { isRevoked: true },
       });
     }
@@ -247,7 +243,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     // Check if refresh token exists in database and is not revoked
     const tokenRecord = await prisma.refreshToken.findFirst({
       where: {
-        token: refreshToken,
+        refreshToken: refreshToken,
         userId: decoded.userId,
         isRevoked: false,
         expiresAt: {
@@ -297,7 +293,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
       // Revoke old refresh token
       await tx.refreshToken.updateMany({
-        where: { token: refreshToken },
+        where: { refreshToken: refreshToken },
         data: { isRevoked: true },
       });
 
@@ -306,7 +302,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       await tx.refreshToken.create({
         data: {
           userId: user.id,
-          token: newRefreshToken,
+          refreshToken: newRefreshToken,
           expiresAt,
         },
       });
