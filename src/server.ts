@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { disconnectPrisma, checkDatabaseConnection } from "./lib/prisma.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import serviceCategoryRoutes from "./modules/serviceCategory/serviceCategory.routes.js";
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use(express.json());
 
 // API routes
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/service-categories", serviceCategoryRoutes);
 
 app.get("/api/v1", (req, res) => {
   res.send("Hello From API");
