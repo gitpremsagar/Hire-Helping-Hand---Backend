@@ -31,9 +31,14 @@ const verifyPhoneSchema = z.object({
   code: z.string().min(4, "Verification code must be at least 4 digits"),
 });
 
+const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, "Refresh token is required"),
+});
+
 export {
   signUpSchema,
   loginSchema,
+  refreshTokenSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,

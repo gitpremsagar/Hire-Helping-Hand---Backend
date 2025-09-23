@@ -58,6 +58,7 @@ model User {
   jobs                   Job[]
   blogPosts              BlogPost[]
   UserToLanguageRelation UserToLanguageRelation[]
+  refreshTokens          RefreshToken[]
 }
 
 model UserLanguage {
@@ -354,4 +355,16 @@ model BlogPost {
   updatedAt DateTime @updatedAt
 
   author User @relation(fields: [authorId], references: [id])
+}
+
+model RefreshToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  token     String   @unique
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
 }

@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema } from "./auth.schemas.js";
+import { signUpSchema, loginSchema, refreshTokenSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema } from "./auth.schemas.js";
 
 const validateSignUpJson = (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -86,4 +86,18 @@ const validateVerifyPhoneJson = (req: Request, res: Response, next: NextFunction
     }
 };
 
-export { validateSignUpJson, validateLoginJson, validateForgotPasswordJson, validateResetPasswordJson, validateVerifyEmailJson, validateVerifyPhoneJson };
+const validateRefreshTokenJson = (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const validatedData = refreshTokenSchema.parse(req.body);
+        req.body = validatedData;
+        next();
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            message: "Validation error",
+            errors: error instanceof z.ZodError ? error.issues : error,
+        });
+    }
+};
+
+export { validateSignUpJson, validateLoginJson, validateRefreshTokenJson, validateForgotPasswordJson, validateResetPasswordJson, validateVerifyEmailJson, validateVerifyPhoneJson };

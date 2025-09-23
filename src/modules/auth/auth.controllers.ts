@@ -8,17 +8,73 @@ import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/cont
 const prisma = new PrismaClient();
 
 
-// Helper function to generate JWT token
-const generateToken = (userId: string): string => {
+// Helper function to generate access token
+const generateAccessToken = (userId: string): string => {
   try {
     if (!process.env.JWT_SECRET) {
       throw ErrorTypes.JWT_SECRET_MISSING();
     }
-    return jwt.sign({ userId }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
+    return jwt.sign({ userId, type: "access" }, process.env.JWT_SECRET, {
+      expiresIn: "15m", // Short-lived access token
     });
   } catch (error) {
-    throw new AppError("Failed to generate authentication token", 500);
+    throw new AppError("Failed to generate access token", 500);
+  }
+};
+
+// Helper function to generate refresh token
+const generateRefreshToken = (userId: string): string => {
+  try {
+    if (!process.env.JWT_REFRESH_SECRET) {
+      throw new AppError("JWT refresh secret is not configured", 500);
+    }
+    return jwt.sign({ userId, type: "refresh" }, process.env.JWT_REFRESH_SECRET, {
+      expiresIn: "7d", // Long-lived refresh token
+    });
+  } catch (error) {
+    throw new AppError("Failed to generate refresh token", 500);
+  }
+};
+
+// Helper function to save refresh token to database
+const saveRefreshToken = async (userId: string, token: string): Promise<void> => {
+  try {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+
+    await prisma.refreshToken.create({
+      data: {
+        userId,
+        token,
+        expiresAt,
+      },
+    });
+  } catch (error) {
+    throw new AppError("Failed to save refresh token", 500);
+  }
+};
+
+// Helper function to revoke refresh token
+const revokeRefreshToken = async (token: string): Promise<void> => {
+  try {
+    await prisma.refreshToken.updateMany({
+      where: { token },
+      data: { isRevoked: true },
+    });
+  } catch (error) {
+    throw new AppError("Failed to revoke refresh token", 500);
+  }
+};
+
+// Helper function to revoke all user refresh tokens
+const revokeAllUserRefreshTokens = async (userId: string): Promise<void> => {
+  try {
+    await prisma.refreshToken.updateMany({
+      where: { userId, isRevoked: false },
+      data: { isRevoked: true },
+    });
+  } catch (error) {
+    throw new AppError("Failed to revoke user refresh tokens", 500);
   }
 };
 
@@ -82,12 +138,17 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
       },
     });
 
-    // Generate JWT token
-    const token = generateToken(user.id);
+    // Generate access and refresh tokens
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+    
+    // Save refresh token to database
+    await saveRefreshToken(user.id, refreshToken);
 
     sendSuccess(res, "User registered successfully", {
       user,
-      token,
+      accessToken,
+      refreshToken,
     }, 201);
   } catch (error) {
     handleError(error, res, "Failed to register user");
@@ -119,15 +180,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       throw ErrorTypes.INVALID_CREDENTIALS();
     }
 
-    // Generate JWT token
-    const token = generateToken(user.id);
+    // Generate access and refresh tokens
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
+    
+    // Save refresh token to database
+    await saveRefreshToken(user.id, refreshToken);
 
     // Return user data without password
     const { password: _, ...userWithoutPassword } = user;
 
     sendSuccess(res, "Login successful", {
       user: userWithoutPassword,
-      token,
+      accessToken,
+      refreshToken,
     });
   } catch (error) {
     handleError(error, res, "Failed to login");
@@ -137,13 +203,103 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 // Logout controller
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
-    // In a stateless JWT implementation, logout is handled on the client side
-    // by removing the token. However, you could implement token blacklisting here
-    // if needed for enhanced security.
+    const { refreshToken } = req.body;
+    
+    if (refreshToken) {
+      // Revoke the specific refresh token
+      await revokeRefreshToken(refreshToken);
+    }
     
     sendSuccess(res, "Logout successful");
   } catch (error) {
     handleError(error, res, "Failed to logout");
+  }
+};
+
+// Refresh token controller
+export const refreshToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      throw ErrorTypes.VALIDATION_ERROR("Refresh token is required");
+    }
+
+    // Verify refresh token
+    if (!process.env.JWT_REFRESH_SECRET) {
+      throw new AppError("JWT refresh secret is not configured", 500);
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    } catch (error) {
+      throw ErrorTypes.VALIDATION_ERROR("Invalid or expired refresh token");
+    }
+
+    if (decoded.type !== "refresh") {
+      throw ErrorTypes.VALIDATION_ERROR("Invalid token type");
+    }
+
+    // Check if refresh token exists in database and is not revoked
+    const tokenRecord = await prisma.refreshToken.findFirst({
+      where: {
+        token: refreshToken,
+        userId: decoded.userId,
+        isRevoked: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!tokenRecord) {
+      throw ErrorTypes.VALIDATION_ERROR("Invalid or expired refresh token");
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        isFreelancer: true,
+        isClient: true,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        isDeleted: true,
+        isSuspended: true,
+        isBlocked: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw ErrorTypes.NOT_FOUND("User");
+    }
+
+    // Check if user is active
+    if (user.isDeleted || user.isSuspended || user.isBlocked) {
+      throw ErrorTypes.ACCOUNT_INACTIVE();
+    }
+
+    // Generate new access token
+    const newAccessToken = generateAccessToken(user.id);
+
+    // Optionally generate new refresh token (refresh token rotation)
+    const newRefreshToken = generateRefreshToken(user.id);
+
+    // Revoke old refresh token and save new one
+    await revokeRefreshToken(refreshToken);
+    await saveRefreshToken(user.id, newRefreshToken);
+
+    sendSuccess(res, "Token refreshed successfully", {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (error) {
+    handleError(error, res, "Failed to refresh token");
   }
 };
 
