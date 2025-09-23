@@ -247,6 +247,47 @@ export const requirePhoneVerified = (req: Request, res: Response, next: NextFunc
   next();
 };
 
+// Authorization middleware for admin users
+export const requireAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    // Check if user has admin role
+    const userRole = await prisma.userAndRoleRelation.findFirst({
+      where: {
+        userId: req.user.id,
+        Role: {
+          name: "admin"
+        }
+      },
+      include: {
+        Role: true
+      }
+    });
+
+    if (!userRole) {
+      res.status(403).json({
+        success: false,
+        message: "Admin access required",
+      });
+      return;
+    }
+
+    next();
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error checking admin permissions",
+    });
+  }
+};
+
 // Authorization middleware for resource ownership
 export const requireOwnership = (resourceUserIdField: string = "userId") => {
   return (req: Request, res: Response, next: NextFunction): void => {
