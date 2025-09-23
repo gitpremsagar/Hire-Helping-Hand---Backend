@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
+import { appConfig, getRefreshTokenExpirationDate } from "../../config/app.config.js";
 
 const prisma = new PrismaClient();
 
@@ -11,12 +12,14 @@ const prisma = new PrismaClient();
 // Helper function to generate access token
 const generateAccessToken = (userId: string): string => {
   try {
-    if (!process.env.JWT_SECRET) {
+    if (!appConfig.jwt.accessToken.secret) {
       throw ErrorTypes.JWT_SECRET_MISSING();
     }
-    return jwt.sign({ userId, type: "access" }, process.env.JWT_SECRET, {
-      expiresIn: "15m", // Short-lived access token
-    });
+    return jwt.sign(
+      { userId, type: "access" }, 
+      appConfig.jwt.accessToken.secret as string, 
+      { expiresIn: appConfig.jwt.accessToken.expiresIn } as jwt.SignOptions
+    );
   } catch (error) {
     throw new AppError("Failed to generate access token", 500);
   }
@@ -25,12 +28,14 @@ const generateAccessToken = (userId: string): string => {
 // Helper function to generate refresh token
 const generateRefreshToken = (userId: string): string => {
   try {
-    if (!process.env.JWT_REFRESH_SECRET) {
+    if (!appConfig.jwt.refreshToken.secret) {
       throw new AppError("JWT refresh secret is not configured", 500);
     }
-    return jwt.sign({ userId, type: "refresh" }, process.env.JWT_REFRESH_SECRET, {
-      expiresIn: "7d", // Long-lived refresh token
-    });
+    return jwt.sign(
+      { userId, type: "refresh" }, 
+      appConfig.jwt.refreshToken.secret as string, 
+      { expiresIn: appConfig.jwt.refreshToken.expiresIn } as jwt.SignOptions
+    );
   } catch (error) {
     throw new AppError("Failed to generate refresh token", 500);
   }
@@ -39,8 +44,7 @@ const generateRefreshToken = (userId: string): string => {
 // Helper function to save refresh token to database
 const saveRefreshToken = async (userId: string, token: string): Promise<void> => {
   try {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+    const expiresAt = getRefreshTokenExpirationDate();
 
     await prisma.refreshToken.create({
       data: {
@@ -81,11 +85,7 @@ const revokeAllUserRefreshTokens = async (userId: string): Promise<void> => {
 // Helper function to hash password
 const hashPassword = async (password: string): Promise<string> => {
   try {
-    const saltRounds = process.env.BCRYPT_SALT_ROUNDS;
-    if (!saltRounds) {
-      throw ErrorTypes.BCRYPT_CONFIG_MISSING();
-    }
-    return await bcrypt.hash(password, +saltRounds);
+    return await bcrypt.hash(password, appConfig.password.saltRounds);
   } catch (error) {
     throw new AppError("Failed to hash password", 500);
   }
@@ -100,7 +100,7 @@ const comparePassword = async (password: string, hashedPassword: string): Promis
   }
 };
 
-// Register controller
+// Sign Up controller
 export const signUp = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, password, isFreelancer, isClient } = req.body;
@@ -145,17 +145,17 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
     // Save refresh token to database
     await saveRefreshToken(user.id, refreshToken);
 
-    sendSuccess(res, "User registered successfully", {
+    sendSuccess(res, "User signed up successfully", {
       user,
       accessToken,
       refreshToken,
     }, 201);
   } catch (error) {
-    handleError(error, res, "Failed to register user");
+    handleError(error, res, "Failed to sign up user");
   }
 };
 
-// Login controller
+// Login controller with email and password
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
@@ -226,13 +226,13 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     }
 
     // Verify refresh token
-    if (!process.env.JWT_REFRESH_SECRET) {
+    if (!appConfig.jwt.refreshToken.secret) {
       throw new AppError("JWT refresh secret is not configured", 500);
     }
 
     let decoded: any;
     try {
-      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+      decoded = jwt.verify(refreshToken, appConfig.jwt.refreshToken.secret as string);
     } catch (error) {
       throw ErrorTypes.VALIDATION_ERROR("Invalid or expired refresh token");
     }
@@ -320,13 +320,13 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     }
 
     // Generate reset token (in a real app, you'd send this via email)
-    if (!process.env.JWT_SECRET) {
+    if (!appConfig.jwt.passwordResetToken.secret) {
       throw ErrorTypes.JWT_SECRET_MISSING();
     }
     const resetToken = jwt.sign(
       { userId: user.id, type: "password_reset" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      appConfig.jwt.passwordResetToken.secret as string,
+      { expiresIn: appConfig.jwt.passwordResetToken.expiresIn } as jwt.SignOptions
     );
 
     // TODO: Send email with reset token
@@ -345,12 +345,12 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     const { token, password } = req.body;
 
     // Verify reset token
-    if (!process.env.JWT_SECRET) {
+    if (!appConfig.jwt.passwordResetToken.secret) {
       throw ErrorTypes.JWT_SECRET_MISSING();
     }
     let decoded: any;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, appConfig.jwt.passwordResetToken.secret as string);
     } catch (error) {
       throw ErrorTypes.VALIDATION_ERROR("Invalid or expired reset token");
     }
@@ -389,12 +389,12 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
     const { token } = req.body;
 
     // Verify email token
-    if (!process.env.JWT_SECRET) {
+    if (!appConfig.jwt.emailVerificationToken.secret) {
       throw ErrorTypes.JWT_SECRET_MISSING();
     }
     let decoded: any;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, appConfig.jwt.emailVerificationToken.secret as string);
     } catch (error) {
       throw ErrorTypes.VALIDATION_ERROR("Invalid or expired verification token");
     }

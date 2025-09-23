@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import { AppError, ErrorTypes } from "../utils/controllerErrorHandler.js";
+import { appConfig } from "../config/app.config.js";
 
 const prisma = new PrismaClient();
 
@@ -33,14 +34,14 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     const token = authHeader.substring(7); // Remove "Bearer " prefix
 
-    if (!process.env.JWT_SECRET) {
+    if (!appConfig.jwt.accessToken.secret) {
       throw new AppError("JWT secret is not configured", 500);
     }
 
     // Verify access token
     let decoded: any;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, appConfig.jwt.accessToken.secret as string);
     } catch (error) {
       throw ErrorTypes.UNAUTHORIZED("Invalid or expired access token");
     }
@@ -113,14 +114,14 @@ export const optionalAuthenticate = async (req: Request, res: Response, next: Ne
 
     const token = authHeader.substring(7);
 
-    if (!process.env.JWT_SECRET) {
+    if (!appConfig.jwt.accessToken.secret) {
       return next(); // Continue without authentication
     }
 
     // Verify access token
     let decoded: any;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, appConfig.jwt.accessToken.secret as string);
     } catch (error) {
       return next(); // Continue without authentication
     }
