@@ -71,9 +71,6 @@ export const signUp = async (req, res) => {
         }
         // Hash password
         const hashedPassword = await hashPassword(password);
-        // Generate tokens
-        const accessToken = generateAccessToken("temp"); // We'll update this after user creation
-        const refreshToken = generateRefreshToken("temp"); // We'll update this after user creation
         // Use transaction to ensure data consistency
         const result = await withTransaction(async (tx) => {
             // Create user
@@ -97,24 +94,34 @@ export const signUp = async (req, res) => {
                 },
             });
             // Generate tokens with actual user ID
-            const actualAccessToken = generateAccessToken(user.id);
-            const actualRefreshToken = generateRefreshToken(user.id);
+            const accessToken = generateAccessToken(user.id);
+            const refreshToken = generateRefreshToken(user.id);
             // Save refresh token to database
             const expiresAt = getRefreshTokenExpirationDate();
             await tx.refreshToken.create({
                 data: {
                     userId: user.id,
-                    token: actualRefreshToken,
+                    refreshToken,
                     expiresAt,
                 },
             });
             return {
                 user,
-                accessToken: actualAccessToken,
-                refreshToken: actualRefreshToken,
+                accessToken,
+                refreshToken,
             };
         });
-        sendSuccess(res, "User signed up successfully", result, 201);
+        // Set refresh token as HTTP-only cookie
+        res.cookie('refreshToken', result.refreshToken, {
+            httpOnly: true,
+            secure: appConfig.cookies.secure,
+            sameSite: appConfig.cookies.sameSite,
+            maxAge: appConfig.cookies.maxAge,
+        });
+        sendSuccess(res, "User signed up successfully", {
+            user: result.user,
+            accessToken: result.accessToken,
+        }, 201);
     }
     catch (error) {
         handleError(error, res, "Failed to sign up user");
@@ -150,7 +157,7 @@ export const login = async (req, res) => {
             await tx.refreshToken.create({
                 data: {
                     userId: user.id,
-                    token: refreshToken,
+                    refreshToken,
                     expiresAt,
                 },
             });
@@ -159,12 +166,18 @@ export const login = async (req, res) => {
                 refreshToken,
             };
         });
+        // Set refresh token as HTTP-only cookie
+        res.cookie('refreshToken', result.refreshToken, {
+            httpOnly: true,
+            secure: appConfig.cookies.secure,
+            sameSite: appConfig.cookies.sameSite,
+            maxAge: appConfig.cookies.maxAge,
+        });
         // Return user data without password
         const { password: _, ...userWithoutPassword } = user;
         sendSuccess(res, "Login successful", {
             user: userWithoutPassword,
             accessToken: result.accessToken,
-            refreshToken: result.refreshToken,
         });
     }
     catch (error) {
@@ -174,14 +187,21 @@ export const login = async (req, res) => {
 // Logout controller
 export const logout = async (req, res) => {
     try {
-        const { refreshToken } = req.body;
+        // Get refresh token from HTTP-only cookie
+        const refreshToken = req.cookies?.refreshToken;
         if (refreshToken) {
             // Revoke the specific refresh token
             await prisma.refreshToken.updateMany({
-                where: { token: refreshToken },
+                where: { refreshToken: refreshToken },
                 data: { isRevoked: true },
             });
         }
+        // Clear the refresh token cookie
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: appConfig.cookies.secure,
+            sameSite: appConfig.cookies.sameSite,
+        });
         sendSuccess(res, "Logout successful");
     }
     catch (error) {
@@ -191,7 +211,8 @@ export const logout = async (req, res) => {
 // Refresh token controller
 export const refreshToken = async (req, res) => {
     try {
-        const { refreshToken } = req.body;
+        // Get refresh token from HTTP-only cookie
+        const refreshToken = req.cookies?.refreshToken;
         if (!refreshToken) {
             throw ErrorTypes.VALIDATION_ERROR("Refresh token is required");
         }
@@ -212,7 +233,7 @@ export const refreshToken = async (req, res) => {
         // Check if refresh token exists in database and is not revoked
         const tokenRecord = await prisma.refreshToken.findFirst({
             where: {
-                token: refreshToken,
+                refreshToken: refreshToken,
                 userId: decoded.userId,
                 isRevoked: false,
                 expiresAt: {
@@ -255,7 +276,7 @@ export const refreshToken = async (req, res) => {
             const newRefreshToken = generateRefreshToken(user.id);
             // Revoke old refresh token
             await tx.refreshToken.updateMany({
-                where: { token: refreshToken },
+                where: { refreshToken: refreshToken },
                 data: { isRevoked: true },
             });
             // Save new refresh token
@@ -263,7 +284,7 @@ export const refreshToken = async (req, res) => {
             await tx.refreshToken.create({
                 data: {
                     userId: user.id,
-                    token: newRefreshToken,
+                    refreshToken: newRefreshToken,
                     expiresAt,
                 },
             });
@@ -272,7 +293,16 @@ export const refreshToken = async (req, res) => {
                 refreshToken: newRefreshToken,
             };
         });
-        sendSuccess(res, "Token refreshed successfully", result);
+        // Set new refresh token as HTTP-only cookie
+        res.cookie('refreshToken', result.refreshToken, {
+            httpOnly: true,
+            secure: appConfig.cookies.secure,
+            sameSite: appConfig.cookies.sameSite,
+            maxAge: appConfig.cookies.maxAge,
+        });
+        sendSuccess(res, "Token refreshed successfully", {
+            accessToken: result.accessToken,
+        });
     }
     catch (error) {
         handleError(error, res, "Failed to refresh token");

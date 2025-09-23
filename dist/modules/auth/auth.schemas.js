@@ -25,8 +25,7 @@ const verifyPhoneSchema = z.object({
     phone: z.string().min(10, "Phone number must be at least 10 digits"),
     code: z.string().min(4, "Verification code must be at least 4 digits"),
 });
-const refreshTokenSchema = z.object({
-    refreshToken: z.string().min(1, "Refresh token is required"),
-});
-export { signUpSchema, loginSchema, refreshTokenSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, };
+// Note: refreshTokenSchema removed since refresh token is now handled via HTTP-only cookies
+// No request body validation needed for refresh token endpoint
+export { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, };
 //# sourceMappingURL=auth.schemas.js.map

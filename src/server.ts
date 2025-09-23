@@ -1,10 +1,17 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { disconnectPrisma, checkDatabaseConnection } from "./lib/prisma.js";
+import authRoutes from "./modules/auth/auth.routes.js";
 
 const app = express();
 
 app.use(cors());
+app.use(cookieParser());
+app.use(express.json());
+
+// API routes
+app.use("/api/v1/auth", authRoutes);
 
 app.get("/", (req, res) => {
   res.send("Hello World");

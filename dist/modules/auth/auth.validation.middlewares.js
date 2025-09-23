@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { signUpSchema, loginSchema, refreshTokenSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema } from "./auth.schemas.js";
+import { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema } from "./auth.schemas.js";
 const validateSignUpJson = (req, res, next) => {
     try {
         const validatedData = signUpSchema.parse(req.body);
@@ -84,19 +84,7 @@ const validateVerifyPhoneJson = (req, res, next) => {
         });
     }
 };
-const validateRefreshTokenJson = (req, res, next) => {
-    try {
-        const validatedData = refreshTokenSchema.parse(req.body);
-        req.body = validatedData;
-        next();
-    }
-    catch (error) {
-        res.status(400).json({
-            success: false,
-            message: "Validation error",
-            errors: error instanceof z.ZodError ? error.issues : error,
-        });
-    }
-};
-export { validateSignUpJson, validateLoginJson, validateRefreshTokenJson, validateForgotPasswordJson, validateResetPasswordJson, validateVerifyEmailJson, validateVerifyPhoneJson };
+// Note: validateRefreshTokenJson removed since refresh token is now handled via HTTP-only cookies
+// No request body validation needed for refresh token endpoint
+export { validateSignUpJson, validateLoginJson, validateForgotPasswordJson, validateResetPasswordJson, validateVerifyEmailJson, validateVerifyPhoneJson };
 //# sourceMappingURL=auth.validation.middlewares.js.map

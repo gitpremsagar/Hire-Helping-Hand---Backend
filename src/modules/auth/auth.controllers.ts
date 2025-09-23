@@ -130,7 +130,18 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
       };
     });
 
-    sendSuccess(res, "User signed up successfully", result, 201);
+    // Set refresh token as HTTP-only cookie
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: appConfig.cookies.secure,
+      sameSite: appConfig.cookies.sameSite,
+      maxAge: appConfig.cookies.maxAge,
+    });
+
+    sendSuccess(res, "User signed up successfully", {
+      user: result.user,
+      accessToken: result.accessToken,
+    }, 201);
   } catch (error) {
     handleError(error, res, "Failed to sign up user");
   }
@@ -183,13 +194,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       };
     });
 
+    // Set refresh token as HTTP-only cookie
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: appConfig.cookies.secure,
+      sameSite: appConfig.cookies.sameSite,
+      maxAge: appConfig.cookies.maxAge,
+    });
+
     // Return user data without password
     const { password: _, ...userWithoutPassword } = user;
 
     sendSuccess(res, "Login successful", {
       user: userWithoutPassword,
       accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
     });
   } catch (error) {
     handleError(error, res, "Failed to login");
@@ -199,7 +217,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 // Logout controller
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { refreshToken } = req.body;
+    // Get refresh token from HTTP-only cookie
+    const refreshToken = req.cookies?.refreshToken;
     
     if (refreshToken) {
       // Revoke the specific refresh token
@@ -208,6 +227,13 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
         data: { isRevoked: true },
       });
     }
+    
+    // Clear the refresh token cookie
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: appConfig.cookies.secure,
+      sameSite: appConfig.cookies.sameSite,
+    });
     
     sendSuccess(res, "Logout successful");
   } catch (error) {
@@ -218,7 +244,8 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 // Refresh token controller
 export const refreshToken = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { refreshToken } = req.body;
+    // Get refresh token from HTTP-only cookie
+    const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
       throw ErrorTypes.VALIDATION_ERROR("Refresh token is required");
@@ -313,7 +340,17 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       };
     });
 
-    sendSuccess(res, "Token refreshed successfully", result);
+    // Set new refresh token as HTTP-only cookie
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: appConfig.cookies.secure,
+      sameSite: appConfig.cookies.sameSite,
+      maxAge: appConfig.cookies.maxAge,
+    });
+
+    sendSuccess(res, "Token refreshed successfully", {
+      accessToken: result.accessToken,
+    });
   } catch (error) {
     handleError(error, res, "Failed to refresh token");
   }
