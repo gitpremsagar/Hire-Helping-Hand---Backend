@@ -15,43 +15,43 @@ datasource db {
 }
 
 model User {
-  id                     String                   @id @default(auto()) @map("_id") @db.ObjectId
-  name                   String
-  email                  String                   @unique
-  password               String
-  address                String?
-  phone                  String?
-  website                String?
-  bio                    String?
-  avatar                 String?
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  name     String
+  email    String  @unique
+  password String
+  address  String?
+  phone    String?
+  website  String?
+  bio      String?
+  avatar   String?
 
   // Location
-  country                String?
-  state                  String?
-  city                   String?
-  zip                    String?
-  latitude               Float?
-  longitude              Float?
+  country   String?
+  state     String?
+  city      String?
+  zip       String?
+  latitude  Float?
+  longitude Float?
 
   // Status
-  isFreelancer           Boolean                  @default(false)
-  isClient               Boolean                  @default(false)
-  isActive               Boolean                  @default(true)
-  isEmailVerified        Boolean                  @default(false)
-  isPhoneVerified        Boolean                  @default(false)
-  isDeleted              Boolean                  @default(false)
-  isArchived             Boolean                  @default(false)
-  isSuspended            Boolean                  @default(false)
-  isBlocked              Boolean                  @default(false)
+  isFreelancer    Boolean @default(false)
+  isClient        Boolean @default(false)
+  isActive        Boolean @default(true)
+  isEmailVerified Boolean @default(false)
+  isPhoneVerified Boolean @default(false)
+  isDeleted       Boolean @default(false)
+  isArchived      Boolean @default(false)
+  isSuspended     Boolean @default(false)
+  isBlocked       Boolean @default(false)
 
   // Timestamps
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime                 @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  UserAndRoleRelation    UserAndRoleRelation[]
-  UserSkillRelation      UserSkillRelation[]
-  
+  UserAndRoleRelation UserAndRoleRelation[]
+  UserSkillRelation   UserSkillRelation[]
+
   // Back-relations for freelancer domain
   freelancerProfile      FreelancerProfile?
   portfolioItems         PortfolioItem[]
@@ -92,13 +92,17 @@ model UserToLanguageRelation {
 }
 
 model Skill {
-  id                String              @id @default(auto()) @map("_id") @db.ObjectId
-  name              String
-  description       String
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  UserSkillRelation UserSkillRelation[]
-  JobSkillRelation  JobSkillRelation[]
+  id                   String              @id @default(auto()) @map("_id") @db.ObjectId
+  name                 String
+  description          String
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  serviceCategoryId    String              @db.ObjectId
+  serviceSubCategoryId String              @db.ObjectId
+  UserSkillRelation    UserSkillRelation[]
+  JobSkillRelation     JobSkillRelation[]
+  ServiceCategory      ServiceCategory     @relation(fields: [serviceCategoryId], references: [id])
+  ServiceSubCategory   ServiceSubCategory  @relation(fields: [serviceSubCategoryId], references: [id])
 }
 
 model UserSkillRelation {
@@ -162,7 +166,13 @@ model PortfolioItem {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  freelancer User @relation(fields: [freelancerId], references: [id])
+  //categorization
+  serviceCategoryId    String @db.ObjectId
+  serviceSubCategoryId String @db.ObjectId
+
+  freelancer         User               @relation(fields: [freelancerId], references: [id])
+  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
+  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
 }
 
 model Employment {
@@ -176,7 +186,13 @@ model Employment {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  //categorization
+  serviceCategoryId String @db.ObjectId
+  serviceSubCategoryId String @db.ObjectId
+
   freelancer User @relation(fields: [freelancerId], references: [id])
+  ServiceCategory ServiceCategory @relation(fields: [serviceCategoryId], references: [id])
+  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
 }
 
 model Education {
@@ -190,7 +206,13 @@ model Education {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  //categorization
+  serviceCategoryId String @db.ObjectId
+  serviceSubCategoryId String @db.ObjectId
+
   freelancer User @relation(fields: [freelancerId], references: [id])
+  ServiceCategory ServiceCategory @relation(fields: [serviceCategoryId], references: [id])
+  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
 }
 
 model Certification {
@@ -204,8 +226,14 @@ model Certification {
   credentialUrl String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+ 
+  //categorization
+  serviceCategoryId String @db.ObjectId
+  serviceSubCategoryId String @db.ObjectId
 
   freelancer User @relation(fields: [freelancerId], references: [id])
+  ServiceCategory ServiceCategory @relation(fields: [serviceCategoryId], references: [id])
+  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
 }
 
 model FreelancingService {
@@ -214,7 +242,8 @@ model FreelancingService {
   title                String
   description          String
   slug                 String @unique // URL-friendly identifier
-  category             String
+  
+  //categorization
   serviceCategoryId    String @db.ObjectId
   serviceSubCategoryId String @db.ObjectId
 
@@ -490,16 +519,16 @@ model Job {
   boostedUntil  DateTime?
 
   // Analytics and tracking
-  viewsCount        Int       @default(0)
-  proposalsCount    Int       @default(0)
-  favoritesCount    Int       @default(0)
-  conversionRate    Float     @default(0.0)
-  
+  viewsCount     Int   @default(0)
+  proposalsCount Int   @default(0)
+  favoritesCount Int   @default(0)
+  conversionRate Float @default(0.0)
+
   // Search and discovery
   tags            String[] // Searchable tags
   keywords        String[] // SEO keywords
   metaDescription String? // SEO meta description
-  
+
   //relations
   client             User               @relation(fields: [clientId], references: [id])
   JobSkillRelation   JobSkillRelation[]
@@ -508,6 +537,7 @@ model Job {
   Contract           Contract?
   proposals          Proposal[]
 }
+
 //=========================== Job enums ============================
 enum JobComplexity {
   SIMPLE
@@ -551,6 +581,7 @@ enum BoostLevel {
   PREMIUM
   ULTRA
 }
+
 // =================================================================
 model BlogPost {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -604,6 +635,11 @@ model ServiceCategory {
   ServiceSubCategory ServiceSubCategory[]
   FreelancingService FreelancingService[]
   Job                Job[]
+  Skill              Skill[]
+  PortfolioItem      PortfolioItem[]
+  Employment         Employment[]
+  Education          Education[]
+  Certification      Certification[]
 }
 
 model ServiceSubCategory {
@@ -618,4 +654,9 @@ model ServiceSubCategory {
   ServiceCategory    ServiceCategory      @relation(fields: [serviceCategoryId], references: [id])
   FreelancingService FreelancingService[]
   Job                Job[]
+  Skill              Skill[]
+  PortfolioItem      PortfolioItem[]
+  Employment         Employment[]
+  Education          Education[]
+  Certification      Certification[]
 }
