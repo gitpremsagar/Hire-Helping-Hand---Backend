@@ -40,6 +40,15 @@ const setUserRoleSchema = z.object({
   roleId: z.string().min(1, "Role ID is required"),
 });
 
+const updateUserRoleSchema = z.object({
+  userId: z.string().min(1, "User ID is required"),
+  roleId: z.string().min(1, "Role ID is required"),
+});
+
+const deleteUserRoleSchema = z.object({
+  userId: z.string().min(1, "User ID is required"),
+});
+
 export {
   signUpSchema,
   loginSchema,
@@ -48,4 +57,6 @@ export {
   verifyEmailSchema,
   verifyPhoneSchema,
   setUserRoleSchema,
+  updateUserRoleSchema,
+  deleteUserRoleSchema,
 };
