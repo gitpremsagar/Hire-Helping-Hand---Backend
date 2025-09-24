@@ -74,7 +74,6 @@ model User {
 model UserLanguage {
   id                     String                   @id @default(auto()) @map("_id") @db.ObjectId
   language               String
-  // level                  LanguageLevel
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
   UserToLanguageRelation UserToLanguageRelation[]
@@ -88,28 +87,55 @@ enum LanguageLevel {
 }
 
 model UserToLanguageRelation {
-  id         String       @id @default(auto()) @map("_id") @db.ObjectId
-  userId     String       @db.ObjectId
-  languageId String       @db.ObjectId
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String        @db.ObjectId
+  languageId String        @db.ObjectId
   level      LanguageLevel
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  user       User         @relation(fields: [userId], references: [id])
-  language   UserLanguage @relation(fields: [languageId], references: [id])
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  user       User          @relation(fields: [userId], references: [id])
+  language   UserLanguage  @relation(fields: [languageId], references: [id])
 }
 
 model Skill {
-  id                   String              @id @default(auto()) @map("_id") @db.ObjectId
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
   name                 String
   description          String
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  serviceCategoryId    String              @db.ObjectId
-  serviceSubCategoryId String              @db.ObjectId
-  UserSkillRelation    UserSkillRelation[]
-  JobSkillRelation     JobSkillRelation[]
-  ServiceCategory      ServiceCategory     @relation(fields: [serviceCategoryId], references: [id])
-  ServiceSubCategory   ServiceSubCategory  @relation(fields: [serviceSubCategoryId], references: [id])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  serviceCategoryId    String   @db.ObjectId
+  serviceSubCategoryId String   @db.ObjectId
+
+  // Relations
+  UserSkillRelation                 UserSkillRelation[]
+  SkillToFreelancingServiceRelation SkillToFreelancingServiceRelation[]
+  SkillToJobRelation                SkillToJobRelation[]
+
+  // Back-relations
+  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
+  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
+}
+
+model SkillToFreelancingServiceRelation {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  skillId              String   @db.ObjectId
+  freelancingServiceId String   @db.ObjectId
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  Skill              Skill              @relation(fields: [skillId], references: [id])
+  FreelancingService FreelancingService @relation(fields: [freelancingServiceId], references: [id])
+}
+
+model SkillToJobRelation {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  skillId   String   @db.ObjectId
+  jobId     String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Skill Skill @relation(fields: [skillId], references: [id])
+  Job   Job   @relation(fields: [jobId], references: [id])
 }
 
 model UserSkillRelation {
@@ -119,16 +145,6 @@ model UserSkillRelation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   User      User     @relation(fields: [userId], references: [id])
-  Skill     Skill    @relation(fields: [skillId], references: [id])
-}
-
-model JobSkillRelation {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  jobId     String   @db.ObjectId
-  skillId   String   @db.ObjectId
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Job       Job      @relation(fields: [jobId], references: [id])
   Skill     Skill    @relation(fields: [skillId], references: [id])
 }
 
@@ -194,11 +210,11 @@ model Employment {
   updatedAt    DateTime  @updatedAt
 
   //categorization
-  serviceCategoryId String @db.ObjectId
+  serviceCategoryId    String @db.ObjectId
   serviceSubCategoryId String @db.ObjectId
 
-  freelancer User @relation(fields: [freelancerId], references: [id])
-  ServiceCategory ServiceCategory @relation(fields: [serviceCategoryId], references: [id])
+  freelancer         User               @relation(fields: [freelancerId], references: [id])
+  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
   ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
 }
 
@@ -214,11 +230,11 @@ model Education {
   updatedAt    DateTime  @updatedAt
 
   //categorization
-  serviceCategoryId String @db.ObjectId
+  serviceCategoryId    String @db.ObjectId
   serviceSubCategoryId String @db.ObjectId
 
-  freelancer User @relation(fields: [freelancerId], references: [id])
-  ServiceCategory ServiceCategory @relation(fields: [serviceCategoryId], references: [id])
+  freelancer         User               @relation(fields: [freelancerId], references: [id])
+  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
   ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
 }
 
@@ -233,23 +249,23 @@ model Certification {
   credentialUrl String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
- 
+
   //categorization
-  serviceCategoryId String @db.ObjectId
+  serviceCategoryId    String @db.ObjectId
   serviceSubCategoryId String @db.ObjectId
 
-  freelancer User @relation(fields: [freelancerId], references: [id])
-  ServiceCategory ServiceCategory @relation(fields: [serviceCategoryId], references: [id])
+  freelancer         User               @relation(fields: [freelancerId], references: [id])
+  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
   ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
 }
 
 model FreelancingService {
-  id                   String @id @default(auto()) @map("_id") @db.ObjectId
-  freelancerId         String @db.ObjectId
-  title                String
-  description          String
-  slug                 String @unique // URL-friendly identifier
-  
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  freelancerId String @db.ObjectId
+  title        String
+  description  String
+  slug         String @unique // URL-friendly identifier
+
   //categorization
   serviceCategoryId    String @db.ObjectId
   serviceSubCategoryId String @db.ObjectId
@@ -325,12 +341,13 @@ model FreelancingService {
   updatedAt DateTime @updatedAt
 
   // Relations
-  freelancer         User                        @relation(fields: [freelancerId], references: [id])
-  packages           FreelancingServicePackage[]
-  reviews            FreelancingServiceReview[]
-  contracts          Contract[]
-  ServiceCategory    ServiceCategory             @relation(fields: [serviceCategoryId], references: [id])
-  ServiceSubCategory ServiceSubCategory          @relation(fields: [serviceSubCategoryId], references: [id])
+  freelancer                        User                                @relation(fields: [freelancerId], references: [id])
+  packages                          FreelancingServicePackage[]
+  reviews                           FreelancingServiceReview[]
+  contracts                         Contract[]
+  ServiceCategory                   ServiceCategory                     @relation(fields: [serviceCategoryId], references: [id])
+  ServiceSubCategory                ServiceSubCategory                  @relation(fields: [serviceSubCategoryId], references: [id])
+  SkillToFreelancingServiceRelation SkillToFreelancingServiceRelation[]
 }
 
 enum ServiceStatus {
@@ -537,12 +554,12 @@ model Job {
   metaDescription String? // SEO meta description
 
   //relations
-  client             User               @relation(fields: [clientId], references: [id])
-  JobSkillRelation   JobSkillRelation[]
-  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
-  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
+  client             User                 @relation(fields: [clientId], references: [id])
+  ServiceCategory    ServiceCategory      @relation(fields: [serviceCategoryId], references: [id])
+  ServiceSubCategory ServiceSubCategory   @relation(fields: [serviceSubCategoryId], references: [id])
   Contract           Contract?
   proposals          Proposal[]
+  SkillToJobRelation SkillToJobRelation[]
 }
 
 //=========================== Job enums ============================
