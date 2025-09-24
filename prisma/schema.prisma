@@ -24,12 +24,16 @@ model User {
   website                String?
   bio                    String?
   avatar                 String?
+
+  // Location
   country                String?
   state                  String?
   city                   String?
   zip                    String?
   latitude               Float?
   longitude              Float?
+
+  // Status
   isFreelancer           Boolean                  @default(false)
   isClient               Boolean                  @default(false)
   isActive               Boolean                  @default(true)
@@ -39,10 +43,15 @@ model User {
   isArchived             Boolean                  @default(false)
   isSuspended            Boolean                  @default(false)
   isBlocked              Boolean                  @default(false)
+
+  // Timestamps
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
+
+  // Relations
   UserAndRoleRelation    UserAndRoleRelation[]
   UserSkillRelation      UserSkillRelation[]
+  
   // Back-relations for freelancer domain
   freelancerProfile      FreelancerProfile?
   portfolioItems         PortfolioItem[]
@@ -200,26 +209,101 @@ model Certification {
 }
 
 model FreelancingService {
-  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
-  freelancerId         String   @db.ObjectId
+  id                   String @id @default(auto()) @map("_id") @db.ObjectId
+  freelancerId         String @db.ObjectId
   title                String
   description          String
+  slug                 String @unique // URL-friendly identifier
   category             String
-  serviceCategoryId    String   @db.ObjectId
-  serviceSubCategoryId String   @db.ObjectId
-  subcategory          String?
-  isActive             Boolean  @default(true)
-  rating               Float?
-  ratingCount          Int      @default(0)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  serviceCategoryId    String @db.ObjectId
+  serviceSubCategoryId String @db.ObjectId
 
+  // Pricing & Packages
+  basePrice       Float?
+  currency        String  @default("USD")
+  isCustomPricing Boolean @default(false)
+
+  // Service Delivery
+  deliveryTime          Int // in days
+  revisionPolicy        Int     @default(0) // number of revisions
+  rushDeliveryAvailable Boolean @default(false)
+  rushDeliveryFee       Float?
+  deliveryGuarantee     String?
+
+  // Quality & Trust
+  isActive       Boolean  @default(true)
+  isTopRated     Boolean  @default(false)
+  isProSeller    Boolean  @default(false)
+  isFeatured     Boolean  @default(false)
+  badges         String[]
+  rating         Float?
+  ratingCount    Int      @default(0)
+  completionRate Float    @default(100.0)
+  responseTime   String? // e.g., "1 hour"
+  orderCount     Int      @default(0)
+
+  // Service Requirements
+  requirements          String?
+  faq                   Json?
+  communicationLanguage String[]
+  timezone              String?
+  availability          Json? // working hours/days
+
+  // Media & Portfolio
+  gallery           String[]
+  videoIntroduction String?
+  portfolioItems    String[] @db.ObjectId
+  beforeAfterImages String[]
+
+  // Features & Add-ons
+  features String[]
+  addOns   Json?
+  extras   Json?
+
+  // SEO & Discovery
+  tags            String[]
+  keywords        String[]
+  metaDescription String?
+
+  // Status & Moderation
+  status          ServiceStatus @default(DRAFT)
+  rejectionReason String?
+  moderationNotes String?
+  featuredUntil   DateTime?
+  boostedUntil    DateTime?
+
+  // Analytics
+  views             Int       @default(0)
+  favorites         Int       @default(0)
+  conversionRate    Float     @default(0.0)
+  lastOrderDate     DateTime?
+  averageOrderValue Float?
+
+  // Customization
+  isCustomizable  Boolean @default(false)
+  customFields    Json?
+  templateOptions Json?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
   freelancer         User                        @relation(fields: [freelancerId], references: [id])
   packages           FreelancingServicePackage[]
   reviews            FreelancingServiceReview[]
   contracts          Contract[]
   ServiceCategory    ServiceCategory             @relation(fields: [serviceCategoryId], references: [id])
   ServiceSubCategory ServiceSubCategory          @relation(fields: [serviceSubCategoryId], references: [id])
+}
+
+enum ServiceStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  SUSPENDED
+  ARCHIVED
 }
 
 model FreelancingServicePackage {
@@ -346,20 +430,77 @@ model PayoutMethod {
 }
 
 model Job {
+  // Current fields (keep these)
   id                   String   @id @default(auto()) @map("_id") @db.ObjectId
   clientId             String   @db.ObjectId
   title                String
-  requirements         String
   attachments          String[]
-  budget               Float
   deadline             DateTime
   serviceCategoryId    String   @db.ObjectId
   serviceSubCategoryId String   @db.ObjectId
-  contractId           String?  @db.ObjectId // we will have contractId only if a proposal of a freelancer is accepted
-  acceptedProposalId   String?  @db.ObjectId // we will have acceptedProposalId only if a proposal of a freelancer is accepted
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
 
+  // Additional essential fields
+  slug        String        @unique // URL-friendly identifier
+  description String // Detailed job description
+  complexity  JobComplexity @default(MEDIUM) // SIMPLE, MEDIUM, COMPLEX, EXPERT
+
+  // Enhanced budget fields
+  budget     Float? // For fixed-price jobs
+  budgetMin  Float? // For range-based pricing
+  budgetMax  Float? // For range-based pricing
+  budgetType BudgetType @default(FIXED) // FIXED, RANGE, NEGOTIABLE
+  currency   String     @default("USD")
+
+  // Enhanced timeline fields
+  startDate DateTime? // When work should begin
+  endDate   DateTime? // Alternative to deadline
+  duration  Int? // Expected duration in days
+  isUrgent  Boolean   @default(false)
+  timezone  String? // Client's timezone
+
+  // Job lifecycle management
+  status      JobStatus     @default(OPEN) // OPEN, IN_PROGRESS, COMPLETED, CANCELLED, PAUSED
+  visibility  JobVisibility @default(PUBLIC) // PUBLIC, PRIVATE, INVITE_ONLY
+  isActive    Boolean       @default(true)
+  isArchived  Boolean       @default(false)
+  isInTrash   Boolean       @default(false)
+  isDeleted   Boolean       @default(false)
+  isPaused    Boolean       @default(false)
+  pauseReason String?
+
+  // Client details and preferences
+  clientCompany     String? // Company name
+  clientLocation    String? // Client's location
+  clientTimezone    String? // Client's timezone
+  preferredLanguage String[] // Communication languages
+
+  // Enhanced skill requirements
+  requiredSkills  String[] // Required skill names
+  preferredSkills String[] // Nice-to-have skills
+  experienceLevel ExperienceLevel @default(INTERMEDIATE) // BEGINNER, INTERMEDIATE, EXPERT
+
+  // Legal and compliance fields // INDEPENDENT_CONTRACTOR, EMPLOYEE, PARTNERSHIP
+  ndaRequired Boolean @default(false) //is non disclosure agreement required
+  ipRights    String? // Intellectual property rights
+
+  // Platform-specific features
+  isFeatured    Boolean    @default(false)
+  boostLevel    BoostLevel @default(NONE) // NONE, STANDARD, PREMIUM, ULTRA
+  featuredUntil DateTime?
+  boostedUntil  DateTime?
+
+  // Analytics and tracking
+  viewsCount        Int       @default(0)
+  proposalsCount    Int       @default(0)
+  favoritesCount    Int       @default(0)
+  conversionRate    Float     @default(0.0)
+  
+  // Search and discovery
+  tags            String[] // Searchable tags
+  keywords        String[] // SEO keywords
+  metaDescription String? // SEO meta description
+  
+  //relations
   client             User               @relation(fields: [clientId], references: [id])
   JobSkillRelation   JobSkillRelation[]
   ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
@@ -367,7 +508,50 @@ model Job {
   Contract           Contract?
   proposals          Proposal[]
 }
+//=========================== Job enums ============================
+enum JobComplexity {
+  SIMPLE
+  MEDIUM
+  COMPLEX
+  EXPERT
+}
 
+enum BudgetType {
+  FIXED
+  RANGE
+  NEGOTIABLE
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  PAUSED
+  CLOSED
+}
+
+enum JobVisibility {
+  PUBLIC
+  PRIVATE
+  INVITE_ONLY
+  FEATURED
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  EXPERT
+}
+
+enum BoostLevel {
+  NONE
+  STANDARD
+  PREMIUM
+  ULTRA
+}
+// =================================================================
 model BlogPost {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   authorId  String   @db.ObjectId
