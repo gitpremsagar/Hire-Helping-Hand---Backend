@@ -6,6 +6,7 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import serviceCategoryRoutes from "./modules/serviceCategory/serviceCategory.routes.js";
 import serviceSubCategoryRoutes from "./modules/serviceSubCategory/serviceSubCategory.routes.js";
 import userRoleRoutes from "./modules/userRole/userRole.routes.js";
+import userLanguageRoutes from "./modules/userLanguage/userLanguage.routes.js";
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/service-categories", serviceCategoryRoutes);
 app.use("/api/v1/service-subcategories", serviceSubCategoryRoutes);
 app.use("/api/v1/user-roles", userRoleRoutes);
+app.use("/api/v1/user-languages", userLanguageRoutes);
 
 app.get("/api/v1", (req, res) => {
   res.send("Hello From API");

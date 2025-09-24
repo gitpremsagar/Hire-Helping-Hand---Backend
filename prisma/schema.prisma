@@ -73,18 +73,25 @@ model User {
 
 model UserLanguage {
   id                     String                   @id @default(auto()) @map("_id") @db.ObjectId
-  userId                 String                   @db.ObjectId
   language               String
-  level                  String
+  // level                  LanguageLevel
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
   UserToLanguageRelation UserToLanguageRelation[]
+}
+
+enum LanguageLevel {
+  BEGINNER
+  INTERMEDIATE
+  FLUENT
+  NATIVE
 }
 
 model UserToLanguageRelation {
   id         String       @id @default(auto()) @map("_id") @db.ObjectId
   userId     String       @db.ObjectId
   languageId String       @db.ObjectId
+  level      LanguageLevel
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
   user       User         @relation(fields: [userId], references: [id])

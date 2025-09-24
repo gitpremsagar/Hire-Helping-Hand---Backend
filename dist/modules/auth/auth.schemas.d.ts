@@ -29,5 +29,12 @@ declare const setUserRoleSchema: z.ZodObject<{
     userId: z.ZodString;
     roleId: z.ZodString;
 }, z.core.$strip>;
-export { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, setUserRoleSchema, };
+declare const updateUserRoleSchema: z.ZodObject<{
+    userId: z.ZodString;
+    roleId: z.ZodString;
+}, z.core.$strip>;
+declare const deleteUserRoleSchema: z.ZodObject<{
+    userId: z.ZodString;
+}, z.core.$strip>;
+export { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, setUserRoleSchema, updateUserRoleSchema, deleteUserRoleSchema, };
 //# sourceMappingURL=auth.schemas.d.ts.map

@@ -453,7 +453,7 @@ export const verifyPhone = async (req, res) => {
     }
 };
 // Set user role controller
-export const setUserRole = async (req, res) => {
+export const addRoleToUser = async (req, res) => {
     try {
         const { userId, roleId } = req.body;
         // Check if user exists
@@ -481,6 +481,38 @@ export const setUserRole = async (req, res) => {
     }
     catch (error) {
         handleError(error, res, "Failed to set user role");
+    }
+};
+// Delete user role controller
+export const removeRoleFromUser = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        // Check if user exists
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+        if (!user) {
+            throw ErrorTypes.NOT_FOUND("User");
+        }
+        // Check if user role relation exists
+        const existingUserRole = await prisma.userAndRoleRelation.findFirst({
+            where: {
+                userId,
+            },
+        });
+        if (!existingUserRole) {
+            throw ErrorTypes.NOT_FOUND("User role assignment");
+        }
+        // Delete user role
+        await prisma.userAndRoleRelation.delete({
+            where: {
+                id: existingUserRole.id,
+            },
+        });
+        sendSuccess(res, "User role deleted successfully");
+    }
+    catch (error) {
+        handleError(error, res, "Failed to delete user role");
     }
 };
 //# sourceMappingURL=auth.controllers.js.map
