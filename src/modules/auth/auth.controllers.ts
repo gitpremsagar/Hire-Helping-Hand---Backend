@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { prisma, withTransaction } from "../../lib/prisma.js";
 import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
 import { appConfig, getRefreshTokenExpirationDate } from "../../config/app.config.js";
+import { emailService } from "../../utils/emailService.js";
 
 
 // Helper function to generate access token
@@ -213,6 +214,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Return user data without password
     const { password: _, ...userWithoutPassword } = user;
+
+    console.log(`Sending login success notification email`);
+    // Send login success notification email (non-blocking)
+    emailService.sendLoginSuccessNotification(user.email, user.name)
+      .catch(error => {
+        console.error('Failed to send login success notification:', error);
+        // Don't throw error to avoid breaking the login flow
+      });
 
     sendSuccess(res, "Login successful", {
       user: userWithoutPassword,
