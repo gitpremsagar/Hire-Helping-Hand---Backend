@@ -8,6 +8,7 @@ import serviceSubCategoryRoutes from "./modules/serviceSubCategory/serviceSubCat
 import userRoleRoutes from "./modules/userRole/userRole.routes.js";
 import userLanguageRoutes from "./modules/userLanguage/userLanguage.routes.js";
 import skillRoutes from "./modules/skill/skill.routes.js";
+import freelancingServiceRoutes from "./modules/freelancingService/freelancingService.routes.js";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api/v1/service-subcategories", serviceSubCategoryRoutes);
 app.use("/api/v1/user-roles", userRoleRoutes);
 app.use("/api/v1/user-languages", userLanguageRoutes);
 app.use("/api/v1/skills", skillRoutes);
+app.use("/api/v1/freelancing-services", freelancingServiceRoutes);
 
 app.get("/api/v1", (req, res) => {
   res.send("Hello From API");
