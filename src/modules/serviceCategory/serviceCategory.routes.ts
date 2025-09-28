@@ -18,8 +18,8 @@ import { authenticate, requireAdmin } from "../../middleware/auth.middlewares.js
 
 const serviceCategoryRoutes = express.Router();
 
-// Create a new service category
-serviceCategoryRoutes.post("/", authenticate, requireAdmin, validateCreateServiceCategoryJson, createServiceCategory);
+// Create a new service category TODO: Uncomment the authenticate and requireAdmin middlewares
+serviceCategoryRoutes.post("/", /*authenticate, requireAdmin,*/ validateCreateServiceCategoryJson, createServiceCategory);
 
 // Get all service categories with pagination and search
 serviceCategoryRoutes.get("/", validateGetServiceCategoriesQuery, getServiceCategories);
