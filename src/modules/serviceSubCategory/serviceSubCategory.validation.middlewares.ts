@@ -4,6 +4,7 @@ import {
   createServiceSubCategorySchema, 
   updateServiceSubCategorySchema, 
   serviceSubCategoryIdSchema,
+  serviceSubCategorySlugSchema,
   getServiceSubCategoriesQuerySchema 
 } from "./serviceSubCategory.schemas.js";
 
@@ -50,6 +51,21 @@ const validateServiceSubCategoryId = (req: Request, res: Response, next: NextFun
   }
 };
 
+const validateServiceSubCategorySlug = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const validatedData = serviceSubCategorySlugSchema.parse(req.params);
+    // Store validated data in a custom property to avoid type conflicts
+    (req as any).validatedParams = validatedData;
+    next();
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: "Validation error",
+      errors: error instanceof z.ZodError ? error.issues : error,
+    });
+  }
+};
+
 const validateGetServiceSubCategoriesQuery = (req: Request, res: Response, next: NextFunction) => {
   try {
     const validatedData = getServiceSubCategoriesQuerySchema.parse(req.query);
@@ -69,5 +85,6 @@ export {
   validateCreateServiceSubCategoryJson, 
   validateUpdateServiceSubCategoryJson, 
   validateServiceSubCategoryId,
+  validateServiceSubCategorySlug,
   validateGetServiceSubCategoriesQuery 
 };

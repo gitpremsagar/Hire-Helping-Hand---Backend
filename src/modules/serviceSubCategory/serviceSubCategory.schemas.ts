@@ -4,6 +4,7 @@ import { z } from "zod";
 const createServiceSubCategorySchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
   description: z.string().min(1, "Description is required").max(500, "Description must be less than 500 characters"),
+  slug: z.string().min(1, "Slug is required").max(100, "Slug must be less than 100 characters").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens").optional(),
   isNew: z.boolean().optional().default(false),
   serviceCategoryId: z.string().min(1, "Service category ID is required"),
 });
@@ -11,12 +12,17 @@ const createServiceSubCategorySchema = z.object({
 const updateServiceSubCategorySchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name must be less than 100 characters").optional(),
   description: z.string().min(1, "Description is required").max(500, "Description must be less than 500 characters").optional(),
+  slug: z.string().min(1, "Slug is required").max(100, "Slug must be less than 100 characters").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens").optional(),
   isNew: z.boolean().optional(),
   serviceCategoryId: z.string().min(1, "Service category ID is required").optional(),
 });
 
 const serviceSubCategoryIdSchema = z.object({
   id: z.string().min(1, "Service subcategory ID is required"),
+});
+
+const serviceSubCategorySlugSchema = z.object({
+  slug: z.string().min(1, "Service subcategory slug is required"),
 });
 
 const getServiceSubCategoriesQuerySchema = z.object({
@@ -30,5 +36,6 @@ export {
   createServiceSubCategorySchema,
   updateServiceSubCategorySchema,
   serviceSubCategoryIdSchema,
+  serviceSubCategorySlugSchema,
   getServiceSubCategoriesQuerySchema,
 };

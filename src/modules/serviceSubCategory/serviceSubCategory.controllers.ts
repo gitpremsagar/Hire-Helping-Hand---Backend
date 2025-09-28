@@ -2,10 +2,24 @@ import type { Request, Response } from "express";
 import { prisma } from "../../lib/prisma.js";
 import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
 
+// Utility function to generate slug from name
+const generateSlug = (name: string): string => {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+};
+
 // Create a new service subcategory
 export const createServiceSubCategory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, isNew, serviceCategoryId } = req.body;
+    const { name, description, slug, isNew, serviceCategoryId } = req.body;
+
+    // Generate slug if not provided
+    const finalSlug = slug || generateSlug(name);
 
     // Check if service category exists
     const serviceCategory = await prisma.serviceCategory.findUnique({
@@ -17,7 +31,7 @@ export const createServiceSubCategory = async (req: Request, res: Response): Pro
     }
 
     // Check if service subcategory with the same name already exists in the same category
-    const existingSubCategory = await prisma.serviceSubCategory.findFirst({
+    const existingSubCategoryByName = await prisma.serviceSubCategory.findFirst({
       where: { 
         name: {
           equals: name,
@@ -27,8 +41,22 @@ export const createServiceSubCategory = async (req: Request, res: Response): Pro
       },
     });
 
-    if (existingSubCategory) {
+    if (existingSubCategoryByName) {
       throw ErrorTypes.ALREADY_EXISTS("Service subcategory with this name in the selected category");
+    }
+
+    // Check if service subcategory with the same slug already exists
+    const existingSubCategoryBySlug = await prisma.serviceSubCategory.findFirst({
+      where: { 
+        slug: {
+          equals: finalSlug,
+          mode: 'insensitive'
+        }
+      },
+    });
+
+    if (existingSubCategoryBySlug) {
+      throw ErrorTypes.ALREADY_EXISTS("Service subcategory with this slug");
     }
 
     // Create the service subcategory
@@ -36,6 +64,7 @@ export const createServiceSubCategory = async (req: Request, res: Response): Pro
       data: {
         name,
         description,
+        slug: finalSlug,
         isNew: isNew ?? false,
         serviceCategoryId,
       },
@@ -43,6 +72,7 @@ export const createServiceSubCategory = async (req: Request, res: Response): Pro
         id: true,
         name: true,
         description: true,
+        slug: true,
         isNew: true,
         serviceCategoryId: true,
         createdAt: true,
@@ -112,6 +142,7 @@ export const getServiceSubCategories = async (req: Request, res: Response): Prom
           id: true,
           name: true,
           description: true,
+          slug: true,
           isNew: true,
           serviceCategoryId: true,
           createdAt: true,
@@ -120,6 +151,7 @@ export const getServiceSubCategories = async (req: Request, res: Response): Prom
             select: {
               id: true,
               name: true,
+              slug: true,
             },
           },
           _count: {
@@ -167,6 +199,7 @@ export const getServiceSubCategoryById = async (req: Request, res: Response): Pr
         id: true,
         name: true,
         description: true,
+        slug: true,
         isNew: true,
         serviceCategoryId: true,
         createdAt: true,
@@ -176,6 +209,50 @@ export const getServiceSubCategoryById = async (req: Request, res: Response): Pr
             id: true,
             name: true,
             description: true,
+            slug: true,
+          },
+        },
+        _count: {
+          select: {
+            FreelancingService: true,
+            Job: true,
+          },
+        },
+      },
+    });
+
+    if (!serviceSubCategory) {
+      throw ErrorTypes.NOT_FOUND("Service subcategory");
+    }
+
+    sendSuccess(res, "Service subcategory retrieved successfully", serviceSubCategory);
+  } catch (error) {
+    handleError(error, res, "Failed to retrieve service subcategory");
+  }
+};
+
+// Get a single service subcategory by slug
+export const getServiceSubCategoryBySlug = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { slug } = (req as any).validatedParams as { slug: string };
+
+    const serviceSubCategory = await prisma.serviceSubCategory.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        slug: true,
+        isNew: true,
+        serviceCategoryId: true,
+        createdAt: true,
+        updatedAt: true,
+        ServiceCategory: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            slug: true,
           },
         },
         _count: {
@@ -201,7 +278,7 @@ export const getServiceSubCategoryById = async (req: Request, res: Response): Pr
 export const updateServiceSubCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).validatedParams as { id: string };
-    const { name, description, isNew, serviceCategoryId } = req.body;
+    const { name, description, slug, isNew, serviceCategoryId } = req.body;
 
     // Check if service subcategory exists
     const existingSubCategory = await prisma.serviceSubCategory.findUnique({
@@ -211,6 +288,9 @@ export const updateServiceSubCategory = async (req: Request, res: Response): Pro
     if (!existingSubCategory) {
       throw ErrorTypes.NOT_FOUND("Service subcategory");
     }
+
+    // Generate slug if name is provided but slug is not
+    const finalSlug = slug || (name ? generateSlug(name) : existingSubCategory.slug);
 
     // Check if service category exists (if serviceCategoryId is being updated)
     if (serviceCategoryId && serviceCategoryId !== existingSubCategory.serviceCategoryId) {
@@ -244,12 +324,32 @@ export const updateServiceSubCategory = async (req: Request, res: Response): Pro
       }
     }
 
+    // Check if another service subcategory with the same slug already exists
+    if (finalSlug && finalSlug !== existingSubCategory.slug) {
+      const duplicateSlug = await prisma.serviceSubCategory.findFirst({
+        where: { 
+          slug: {
+            equals: finalSlug,
+            mode: 'insensitive'
+          },
+          id: {
+            not: id
+          }
+        },
+      });
+
+      if (duplicateSlug) {
+        throw ErrorTypes.ALREADY_EXISTS("Service subcategory with this slug");
+      }
+    }
+
     // Update the service subcategory
     const updatedServiceSubCategory = await prisma.serviceSubCategory.update({
       where: { id },
       data: {
         ...(name && { name }),
         ...(description && { description }),
+        ...(finalSlug && { slug: finalSlug }),
         ...(isNew !== undefined && { isNew }),
         ...(serviceCategoryId && { serviceCategoryId }),
       },
@@ -257,6 +357,7 @@ export const updateServiceSubCategory = async (req: Request, res: Response): Pro
         id: true,
         name: true,
         description: true,
+        slug: true,
         isNew: true,
         serviceCategoryId: true,
         createdAt: true,
@@ -265,6 +366,7 @@ export const updateServiceSubCategory = async (req: Request, res: Response): Pro
           select: {
             id: true,
             name: true,
+            slug: true,
           },
         },
       },

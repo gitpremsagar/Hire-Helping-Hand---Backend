@@ -3,6 +3,7 @@ import {
   createServiceSubCategory, 
   getServiceSubCategories, 
   getServiceSubCategoryById, 
+  getServiceSubCategoryBySlug,
   updateServiceSubCategory, 
   deleteServiceSubCategory 
 } from "./serviceSubCategory.controllers.js";
@@ -10,6 +11,7 @@ import {
   validateCreateServiceSubCategoryJson, 
   validateUpdateServiceSubCategoryJson, 
   validateServiceSubCategoryId,
+  validateServiceSubCategorySlug,
   validateGetServiceSubCategoriesQuery 
 } from "./serviceSubCategory.validation.middlewares.js";
 import { authenticate, requireAdmin } from "../../middleware/auth.middlewares.js";
@@ -24,6 +26,9 @@ serviceSubCategoryRoutes.get("/", validateGetServiceSubCategoriesQuery, getServi
 
 // Get a single service subcategory by ID
 serviceSubCategoryRoutes.get("/:id", validateServiceSubCategoryId, getServiceSubCategoryById);
+
+// Get a single service subcategory by slug
+serviceSubCategoryRoutes.get("/slug/:slug", validateServiceSubCategorySlug, getServiceSubCategoryBySlug);
 
 // Update a service subcategory
 serviceSubCategoryRoutes.put("/:id", authenticate, requireAdmin, validateServiceSubCategoryId, validateUpdateServiceSubCategoryJson, updateServiceSubCategory);
