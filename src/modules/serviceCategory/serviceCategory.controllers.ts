@@ -99,7 +99,16 @@ export const getServiceCategories = async (req: Request, res: Response): Promise
               Job: true,
             },
           },
+          ServiceSubCategory: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              isNew: true,
+            },
+          },
         },
+        
       }),
       prisma.serviceCategory.count({
         where: whereClause,

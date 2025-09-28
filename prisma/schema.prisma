@@ -34,15 +34,16 @@ model User {
   longitude Float?
 
   // Status
-  isFreelancer    Boolean @default(false)
-  isClient        Boolean @default(false)
-  isActive        Boolean @default(true)
-  isEmailVerified Boolean @default(false)
-  isPhoneVerified Boolean @default(false)
-  isDeleted       Boolean @default(false)
-  isArchived      Boolean @default(false)
-  isSuspended     Boolean @default(false)
-  isBlocked       Boolean @default(false)
+  isFreelancer       Boolean  @default(false)
+  isClient           Boolean  @default(false)
+  isActive           Boolean  @default(true)
+  isEmailVerified    Boolean  @default(false)
+  isPhoneVerified    Boolean  @default(false)
+  isDeleted          Boolean  @default(false)
+  isArchived         Boolean  @default(false)
+  isSuspended        Boolean  @default(false)
+  isBlocked          Boolean  @default(false)
+  isMemberOfWaitlist Boolean? @default(false)
 
   // Timestamps
   createdAt DateTime @default(now())

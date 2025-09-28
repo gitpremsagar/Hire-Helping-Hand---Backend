@@ -10,6 +10,7 @@ import userLanguageRoutes from "./modules/userLanguage/userLanguage.routes.js";
 import skillRoutes from "./modules/skill/skill.routes.js";
 import freelancingServiceRoutes from "./modules/freelancingService/freelancingService.routes.js";
 import freelancerRoutes from "./modules/freelancer/freelancer.routes.js";
+import clientRoutes from "./modules/client/client.routes.js";
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api/v1/user-languages", userLanguageRoutes);
 app.use("/api/v1/skills", skillRoutes);
 app.use("/api/v1/freelancing-services", freelancingServiceRoutes);
 app.use("/api/v1/freelancers", freelancerRoutes);
+app.use("/api/v1/clients", clientRoutes);
 
 app.get("/api/v1", (req, res) => {
   res.send("Hello From API");

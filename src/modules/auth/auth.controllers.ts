@@ -148,9 +148,28 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
       maxAge: appConfig.cookies.maxAge,
     });
 
-    sendSuccess(res, "User signed up successfully", {
+    // Generate email verification token
+    if (!appConfig.jwt.emailVerificationToken.secret) {
+      throw ErrorTypes.JWT_SECRET_MISSING();
+    }
+    const emailVerificationToken = jwt.sign(
+      { userId: result.user.id, type: "email_verification" },
+      appConfig.jwt.emailVerificationToken.secret as string,
+      { expiresIn: appConfig.jwt.emailVerificationToken.expiresIn } as jwt.SignOptions
+    );
+
+    // Send email verification (non-blocking)
+    console.log(`Sending email verification to: ${result.user.email}`);
+    emailService.sendEmailVerification(result.user.email, result.user.name, emailVerificationToken)
+      .catch(error => {
+        console.error('Failed to send email verification:', error);
+        // Don't throw error to avoid breaking the signup flow
+      });
+
+    sendSuccess(res, "User signed up successfully. Please check your email to verify your account.", {
       user: result.user,
       accessToken: result.accessToken,
+      emailVerificationRequired: true,
     }, 201);
   } catch (error) {
     handleError(error, res, "Failed to sign up user");
