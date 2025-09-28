@@ -653,6 +653,8 @@ model ServiceCategory {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String
+  icon        String?  // Icon identifier (e.g., "code", "design", "writing")
+  slug        String   @unique // URL-friendly identifier
   isNew       Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -671,6 +673,7 @@ model ServiceSubCategory {
   id                String   @id @default(auto()) @map("_id") @db.ObjectId
   name              String
   description       String
+  slug              String   @unique // URL-friendly identifier
   isNew             Boolean  @default(false)
   serviceCategoryId String   @db.ObjectId
   createdAt         DateTime @default(now())

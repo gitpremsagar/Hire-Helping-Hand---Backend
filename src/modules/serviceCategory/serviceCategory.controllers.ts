@@ -2,13 +2,27 @@ import type { Request, Response } from "express";
 import { prisma } from "../../lib/prisma.js";
 import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
 
+// Utility function to generate slug from name
+const generateSlug = (name: string): string => {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+};
+
 // Create a new service category
 export const createServiceCategory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, isNew } = req.body;
+    const { name, description, icon, slug, isNew } = req.body;
+
+    // Generate slug if not provided
+    const finalSlug = slug || generateSlug(name);
 
     // Check if service category with the same name already exists
-    const existingCategory = await prisma.serviceCategory.findFirst({
+    const existingCategoryByName = await prisma.serviceCategory.findFirst({
       where: { 
         name: {
           equals: name,
@@ -17,8 +31,22 @@ export const createServiceCategory = async (req: Request, res: Response): Promis
       },
     });
 
-    if (existingCategory) {
+    if (existingCategoryByName) {
       throw ErrorTypes.ALREADY_EXISTS("Service category with this name");
+    }
+
+    // Check if service category with the same slug already exists
+    const existingCategoryBySlug = await prisma.serviceCategory.findFirst({
+      where: { 
+        slug: {
+          equals: finalSlug,
+          mode: 'insensitive'
+        }
+      },
+    });
+
+    if (existingCategoryBySlug) {
+      throw ErrorTypes.ALREADY_EXISTS("Service category with this slug");
     }
 
     // Create the service category
@@ -26,12 +54,16 @@ export const createServiceCategory = async (req: Request, res: Response): Promis
       data: {
         name,
         description,
+        icon,
+        slug: finalSlug,
         isNew: isNew ?? false,
       },
       select: {
         id: true,
         name: true,
         description: true,
+        icon: true,
+        slug: true,
         isNew: true,
         createdAt: true,
         updatedAt: true,
@@ -89,6 +121,8 @@ export const getServiceCategories = async (req: Request, res: Response): Promise
           id: true,
           name: true,
           description: true,
+          icon: true,
+          slug: true,
           isNew: true,
           createdAt: true,
           updatedAt: true,
@@ -104,6 +138,7 @@ export const getServiceCategories = async (req: Request, res: Response): Promise
               id: true,
               name: true,
               description: true,
+              slug: true,
               isNew: true,
             },
           },
@@ -147,6 +182,8 @@ export const getServiceCategoryById = async (req: Request, res: Response): Promi
         id: true,
         name: true,
         description: true,
+        icon: true,
+        slug: true,
         isNew: true,
         createdAt: true,
         updatedAt: true,
@@ -155,6 +192,52 @@ export const getServiceCategoryById = async (req: Request, res: Response): Promi
             id: true,
             name: true,
             description: true,
+            slug: true,
+            isNew: true,
+            createdAt: true,
+          },
+        },
+        _count: {
+          select: {
+            FreelancingService: true,
+            Job: true,
+          },
+        },
+      },
+    });
+
+    if (!serviceCategory) {
+      throw ErrorTypes.NOT_FOUND("Service category");
+    }
+
+    sendSuccess(res, "Service category retrieved successfully", serviceCategory);
+  } catch (error) {
+    handleError(error, res, "Failed to retrieve service category");
+  }
+};
+
+// Get a single service category by slug
+export const getServiceCategoryBySlug = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { slug } = (req as any).validatedParams as { slug: string };
+
+    const serviceCategory = await prisma.serviceCategory.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        icon: true,
+        slug: true,
+        isNew: true,
+        createdAt: true,
+        updatedAt: true,
+        ServiceSubCategory: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            slug: true,
             isNew: true,
             createdAt: true,
           },
@@ -182,7 +265,7 @@ export const getServiceCategoryById = async (req: Request, res: Response): Promi
 export const updateServiceCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).validatedParams as { id: string };
-    const { name, description, isNew } = req.body;
+    const { name, description, icon, slug, isNew } = req.body;
 
     // Check if service category exists
     const existingCategory = await prisma.serviceCategory.findUnique({
@@ -192,6 +275,9 @@ export const updateServiceCategory = async (req: Request, res: Response): Promis
     if (!existingCategory) {
       throw ErrorTypes.NOT_FOUND("Service category");
     }
+
+    // Generate slug if name is provided but slug is not
+    const finalSlug = slug || (name ? generateSlug(name) : existingCategory.slug);
 
     // Check if another service category with the same name already exists (excluding current one)
     if (name && name !== existingCategory.name) {
@@ -212,18 +298,41 @@ export const updateServiceCategory = async (req: Request, res: Response): Promis
       }
     }
 
+    // Check if another service category with the same slug already exists (excluding current one)
+    if (finalSlug && finalSlug !== existingCategory.slug) {
+      const duplicateSlug = await prisma.serviceCategory.findFirst({
+        where: { 
+          slug: {
+            equals: finalSlug,
+            mode: 'insensitive'
+          },
+          id: {
+            not: id
+          }
+        },
+      });
+
+      if (duplicateSlug) {
+        throw ErrorTypes.ALREADY_EXISTS("Service category with this slug");
+      }
+    }
+
     // Update the service category
     const updatedServiceCategory = await prisma.serviceCategory.update({
       where: { id },
       data: {
         ...(name && { name }),
         ...(description && { description }),
+        ...(icon !== undefined && { icon }),
+        ...(finalSlug && { slug: finalSlug }),
         ...(isNew !== undefined && { isNew }),
       },
       select: {
         id: true,
         name: true,
         description: true,
+        icon: true,
+        slug: true,
         isNew: true,
         createdAt: true,
         updatedAt: true,

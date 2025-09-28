@@ -4,6 +4,7 @@ import {
   createServiceCategorySchema, 
   updateServiceCategorySchema, 
   serviceCategoryIdSchema,
+  serviceCategorySlugSchema,
   getServiceCategoriesQuerySchema 
 } from "./serviceCategory.schemas.js";
 
@@ -50,6 +51,21 @@ const validateServiceCategoryId = (req: Request, res: Response, next: NextFuncti
   }
 };
 
+const validateServiceCategorySlug = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const validatedData = serviceCategorySlugSchema.parse(req.params);
+    // Store validated data in a custom property to avoid type conflicts
+    (req as any).validatedParams = validatedData;
+    next();
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: "Validation error",
+      errors: error instanceof z.ZodError ? error.issues : error,
+    });
+  }
+};
+
 const validateGetServiceCategoriesQuery = (req: Request, res: Response, next: NextFunction) => {
   try {
     const validatedData = getServiceCategoriesQuerySchema.parse(req.query);
@@ -69,5 +85,6 @@ export {
   validateCreateServiceCategoryJson, 
   validateUpdateServiceCategoryJson, 
   validateServiceCategoryId,
+  validateServiceCategorySlug,
   validateGetServiceCategoriesQuery 
 };
