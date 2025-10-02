@@ -13,10 +13,21 @@ const generateSlug = (name: string): string => {
     .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
 };
 
+// Utility function to get the next order number for a specific category
+const getNextOrderNumber = async (serviceCategoryId: string): Promise<number> => {
+  const lastSubCategory = await prisma.serviceSubCategory.findFirst({
+    where: { serviceCategoryId },
+    orderBy: { orderNumber: 'desc' },
+    select: { orderNumber: true },
+  });
+  
+  return (lastSubCategory?.orderNumber ?? 0) + 1;
+};
+
 // Create a new service subcategory
 export const createServiceSubCategory = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, description, slug, isNew, serviceCategoryId } = req.body;
+    const { name, description, slug, orderNumber, isNew, serviceCategoryId } = req.body;
 
     // Generate slug if not provided
     const finalSlug = slug || generateSlug(name);
@@ -59,12 +70,16 @@ export const createServiceSubCategory = async (req: Request, res: Response): Pro
       throw ErrorTypes.ALREADY_EXISTS("Service subcategory with this slug");
     }
 
+    // Get the order number (use provided or auto-assign)
+    const finalOrderNumber = orderNumber ?? await getNextOrderNumber(serviceCategoryId);
+
     // Create the service subcategory
     const serviceSubCategory = await prisma.serviceSubCategory.create({
       data: {
         name,
         description,
         slug: finalSlug,
+        orderNumber: finalOrderNumber,
         isNew: isNew ?? false,
         serviceCategoryId,
       },
@@ -73,6 +88,7 @@ export const createServiceSubCategory = async (req: Request, res: Response): Pro
         name: true,
         description: true,
         slug: true,
+        orderNumber: true,
         isNew: true,
         serviceCategoryId: true,
         createdAt: true,
@@ -135,14 +151,16 @@ export const getServiceSubCategories = async (req: Request, res: Response): Prom
         where: whereClause,
         skip,
         take: limit,
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: [
+          { orderNumber: 'asc' },
+          { createdAt: 'desc' },
+        ],
         select: {
           id: true,
           name: true,
           description: true,
           slug: true,
+          orderNumber: true,
           isNew: true,
           serviceCategoryId: true,
           createdAt: true,
@@ -200,6 +218,7 @@ export const getServiceSubCategoryById = async (req: Request, res: Response): Pr
         name: true,
         description: true,
         slug: true,
+        orderNumber: true,
         isNew: true,
         serviceCategoryId: true,
         createdAt: true,
@@ -243,6 +262,7 @@ export const getServiceSubCategoryBySlug = async (req: Request, res: Response): 
         name: true,
         description: true,
         slug: true,
+        orderNumber: true,
         isNew: true,
         serviceCategoryId: true,
         createdAt: true,
@@ -278,7 +298,7 @@ export const getServiceSubCategoryBySlug = async (req: Request, res: Response): 
 export const updateServiceSubCategory = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).validatedParams as { id: string };
-    const { name, description, slug, isNew, serviceCategoryId } = req.body;
+    const { name, description, slug, orderNumber, isNew, serviceCategoryId } = req.body;
 
     // Check if service subcategory exists
     const existingSubCategory = await prisma.serviceSubCategory.findUnique({
@@ -350,6 +370,7 @@ export const updateServiceSubCategory = async (req: Request, res: Response): Pro
         ...(name && { name }),
         ...(description && { description }),
         ...(finalSlug && { slug: finalSlug }),
+        ...(orderNumber !== undefined && { orderNumber }),
         ...(isNew !== undefined && { isNew }),
         ...(serviceCategoryId && { serviceCategoryId }),
       },
@@ -358,6 +379,7 @@ export const updateServiceSubCategory = async (req: Request, res: Response): Pro
         name: true,
         description: true,
         slug: true,
+        orderNumber: true,
         isNew: true,
         serviceCategoryId: true,
         createdAt: true,
@@ -415,5 +437,105 @@ export const deleteServiceSubCategory = async (req: Request, res: Response): Pro
     sendSuccess(res, "Service subcategory deleted successfully");
   } catch (error) {
     handleError(error, res, "Failed to delete service subcategory");
+  }
+};
+
+// Reorder service subcategories
+export const reorderServiceSubCategories = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { subCategoryOrders } = req.body; // Array of { id: string, orderNumber: number }
+
+    if (!Array.isArray(subCategoryOrders) || subCategoryOrders.length === 0) {
+      throw new AppError("Subcategory orders array is required", 400);
+    }
+
+    // Validate that all IDs exist and are unique
+    const subCategoryIds = subCategoryOrders.map((item: any) => item.id);
+    const uniqueIds = [...new Set(subCategoryIds)];
+    
+    if (subCategoryIds.length !== uniqueIds.length) {
+      throw new AppError("Duplicate subcategory IDs found", 400);
+    }
+
+    // Check if all subcategories exist
+    const existingSubCategories = await prisma.serviceSubCategory.findMany({
+      where: { id: { in: subCategoryIds } },
+      select: { id: true },
+    });
+
+    if (existingSubCategories.length !== subCategoryIds.length) {
+      throw new AppError("One or more service subcategories not found", 404);
+    }
+
+    // Update order numbers in a transaction
+    await prisma.$transaction(
+      subCategoryOrders.map((item: any) =>
+        prisma.serviceSubCategory.update({
+          where: { id: item.id },
+          data: { orderNumber: item.orderNumber },
+        })
+      )
+    );
+
+    // Get updated subcategories with their new order
+    const updatedSubCategories = await prisma.serviceSubCategory.findMany({
+      where: { id: { in: subCategoryIds } },
+      select: {
+        id: true,
+        name: true,
+        orderNumber: true,
+        serviceCategoryId: true,
+      },
+      orderBy: { orderNumber: 'asc' },
+    });
+
+    sendSuccess(res, "Service subcategories reordered successfully", updatedSubCategories);
+  } catch (error) {
+    handleError(error, res, "Failed to reorder service subcategories");
+  }
+};
+
+// Get service subcategories ordered by orderNumber (for frontend display)
+export const getServiceSubCategoriesOrdered = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { serviceCategoryId } = req.query as { serviceCategoryId?: string };
+
+    const whereClause = serviceCategoryId ? { serviceCategoryId } : {};
+
+    const serviceSubCategories = await prisma.serviceSubCategory.findMany({
+      where: whereClause,
+      orderBy: [
+        { orderNumber: 'asc' },
+        { createdAt: 'asc' },
+      ],
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        slug: true,
+        orderNumber: true,
+        isNew: true,
+        serviceCategoryId: true,
+        createdAt: true,
+        updatedAt: true,
+        ServiceCategory: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        _count: {
+          select: {
+            FreelancingService: true,
+            Job: true,
+          },
+        },
+      },
+    });
+
+    sendSuccess(res, "Service subcategories retrieved successfully (ordered)", serviceSubCategories);
+  } catch (error) {
+    handleError(error, res, "Failed to retrieve ordered service subcategories");
   }
 };

@@ -5,7 +5,8 @@ import {
   updateServiceCategorySchema, 
   serviceCategoryIdSchema,
   serviceCategorySlugSchema,
-  getServiceCategoriesQuerySchema 
+  getServiceCategoriesQuerySchema,
+  reorderServiceCategoriesSchema
 } from "./serviceCategory.schemas.js";
 
 const validateCreateServiceCategoryJson = (req: Request, res: Response, next: NextFunction) => {
@@ -81,10 +82,25 @@ const validateGetServiceCategoriesQuery = (req: Request, res: Response, next: Ne
   }
 };
 
+const validateReorderServiceCategoriesJson = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const validatedData = reorderServiceCategoriesSchema.parse(req.body);
+    req.body = validatedData;
+    next();
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: "Validation error",
+      errors: error instanceof z.ZodError ? error.issues : error,
+    });
+  }
+};
+
 export { 
   validateCreateServiceCategoryJson, 
   validateUpdateServiceCategoryJson, 
   validateServiceCategoryId,
   validateServiceCategorySlug,
-  validateGetServiceCategoriesQuery 
+  validateGetServiceCategoriesQuery,
+  validateReorderServiceCategoriesJson
 };

@@ -3,10 +3,17 @@ import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma, withTransaction } from "../../lib/prisma.js";
-import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
-import { appConfig, getRefreshTokenExpirationDate } from "../../config/app.config.js";
+import {
+  AppError,
+  ErrorTypes,
+  handleError,
+  sendSuccess,
+} from "../../utils/controllerErrorHandler.js";
+import {
+  appConfig,
+  getRefreshTokenExpirationDate,
+} from "../../config/app.config.js";
 import { emailService } from "../../utils/emailService.js";
-
 
 // Helper function to generate access token
 const generateAccessToken = (userId: string): string => {
@@ -15,8 +22,8 @@ const generateAccessToken = (userId: string): string => {
       throw ErrorTypes.JWT_SECRET_MISSING();
     }
     return jwt.sign(
-      { userId, type: "access" }, 
-      appConfig.jwt.accessToken.secret as string, 
+      { userId, type: "access" },
+      appConfig.jwt.accessToken.secret as string,
       { expiresIn: appConfig.jwt.accessToken.expiresIn } as jwt.SignOptions
     );
   } catch (error) {
@@ -30,19 +37,23 @@ const generateRefreshToken = (userId: string, expiresAt?: Date): string => {
     if (!appConfig.jwt.refreshToken.secret) {
       throw new AppError("JWT refresh secret is not configured", 500);
     }
-    
+
     // If expiresAt is provided, calculate the time difference for JWT expiration
     let signOptions: jwt.SignOptions;
     if (expiresAt) {
-      const timeUntilExpiry = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+      const timeUntilExpiry = Math.floor(
+        (expiresAt.getTime() - Date.now()) / 1000
+      );
       signOptions = { expiresIn: timeUntilExpiry } as jwt.SignOptions;
     } else {
-      signOptions = { expiresIn: appConfig.jwt.refreshToken.expiresIn } as jwt.SignOptions;
+      signOptions = {
+        expiresIn: appConfig.jwt.refreshToken.expiresIn,
+      } as jwt.SignOptions;
     }
-    
+
     return jwt.sign(
-      { userId, type: "refresh" }, 
-      appConfig.jwt.refreshToken.secret as string, 
+      { userId, type: "refresh" },
+      appConfig.jwt.refreshToken.secret as string,
       signOptions
     );
   } catch (error) {
@@ -71,7 +82,10 @@ const hashPassword = async (password: string): Promise<string> => {
 };
 
 // Helper function to compare password
-const comparePassword = async (password: string, hashedPassword: string): Promise<boolean> => {
+const comparePassword = async (
+  password: string,
+  hashedPassword: string
+): Promise<boolean> => {
   try {
     return await bcrypt.compare(password, hashedPassword);
   } catch (error) {
@@ -141,7 +155,7 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
     });
 
     // Set refresh token as HTTP-only cookie
-    res.cookie('refreshToken', result.refreshToken, {
+    res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
       secure: appConfig.cookies.secure,
       sameSite: appConfig.cookies.sameSite,
@@ -155,22 +169,34 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
     const emailVerificationToken = jwt.sign(
       { userId: result.user.id, type: "email_verification" },
       appConfig.jwt.emailVerificationToken.secret as string,
-      { expiresIn: appConfig.jwt.emailVerificationToken.expiresIn } as jwt.SignOptions
+      {
+        expiresIn: appConfig.jwt.emailVerificationToken.expiresIn,
+      } as jwt.SignOptions
     );
 
     // Send email verification (non-blocking)
-    console.log(`Sending email verification to: ${result.user.email}`);
-    emailService.sendEmailVerification(result.user.email, result.user.name, emailVerificationToken)
-      .catch(error => {
-        console.error('Failed to send email verification:', error);
-        // Don't throw error to avoid breaking the signup flow
-      });
+    // console.log(`Sending email verification to: ${result.user.email}`);
+    // emailService
+    //   .sendEmailVerification(
+    //     result.user.email,
+    //     result.user.name,
+    //     emailVerificationToken
+    //   )
+    //   .catch((error) => {
+    //     console.error("Failed to send email verification:", error);
+    //     // Don't throw error to avoid breaking the signup flow
+    //   });
 
-    sendSuccess(res, "User signed up successfully. Please check your email to verify your account.", {
-      user: result.user,
-      accessToken: result.accessToken,
-      emailVerificationRequired: true,
-    }, 201);
+    sendSuccess(
+      res,
+      "User signed up successfully. Please check your email to verify your account.",
+      {
+        user: result.user,
+        accessToken: result.accessToken,
+        emailVerificationRequired: true,
+      },
+      201
+    );
   } catch (error) {
     handleError(error, res, "Failed to sign up user");
   }
@@ -206,7 +232,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       // Generate access and refresh tokens
       const accessToken = generateAccessToken(user.id);
       const refreshToken = generateRefreshToken(user.id);
-      
+
       // Save refresh token to database
       const expiresAt = getRefreshTokenExpirationDate();
       await tx.refreshToken.create({
@@ -224,7 +250,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
 
     // Set refresh token as HTTP-only cookie
-    res.cookie('refreshToken', result.refreshToken, {
+    res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
       secure: appConfig.cookies.secure,
       sameSite: appConfig.cookies.sameSite,
@@ -236,11 +262,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     console.log(`Sending login success notification email`);
     // Send login success notification email (non-blocking)
-    emailService.sendLoginSuccessNotification(user.email, user.name)
-      .catch(error => {
-        console.error('Failed to send login success notification:', error);
-        // Don't throw error to avoid breaking the login flow
-      });
+    // emailService
+    //   .sendLoginSuccessNotification(user.email, user.name)
+    //   .catch((error) => {
+    //     console.error("Failed to send login success notification:", error);
+    //     // Don't throw error to avoid breaking the login flow
+    //   });
 
     sendSuccess(res, "Login successful", {
       user: userWithoutPassword,
@@ -256,21 +283,21 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     // Get refresh token from HTTP-only cookie
     const refreshToken = req.cookies?.refreshToken;
-    
+
     if (refreshToken) {
       // Delete the specific refresh token from database
       await prisma.refreshToken.deleteMany({
         where: { refreshToken: refreshToken },
       });
     }
-    
+
     // Clear the refresh token cookie
-    res.clearCookie('refreshToken', {
+    res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: appConfig.cookies.secure,
       sameSite: appConfig.cookies.sameSite,
     });
-    
+
     sendSuccess(res, "Logout successful");
   } catch (error) {
     handleError(error, res, "Failed to logout");
@@ -278,7 +305,10 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 };
 
 // Refresh token controller
-export const refreshToken = async (req: Request, res: Response): Promise<void> => {
+export const refreshToken = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     // Get refresh token from HTTP-only cookie
     const refreshToken = req.cookies?.refreshToken;
@@ -294,7 +324,10 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
     let decoded: any;
     try {
-      decoded = jwt.verify(refreshToken, appConfig.jwt.refreshToken.secret as string);
+      decoded = jwt.verify(
+        refreshToken,
+        appConfig.jwt.refreshToken.secret as string
+      );
     } catch (error) {
       throw ErrorTypes.VALIDATION_ERROR("Invalid or expired refresh token");
     }
@@ -322,19 +355,6 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     // Find user
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isFreelancer: true,
-        isClient: true,
-        isEmailVerified: true,
-        isPhoneVerified: true,
-        isDeleted: true,
-        isSuspended: true,
-        isBlocked: true,
-        createdAt: true,
-      },
     });
 
     if (!user) {
@@ -352,7 +372,10 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
       const newAccessToken = generateAccessToken(user.id);
 
       // Generate new refresh token using the old token's expiry date (refresh token rotation)
-      const newRefreshToken = generateRefreshToken(user.id, tokenRecord.expiresAt);
+      const newRefreshToken = generateRefreshToken(
+        user.id,
+        tokenRecord.expiresAt
+      );
 
       // Delete old refresh token
       await tx.refreshToken.deleteMany({
@@ -368,14 +391,18 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
         },
       });
 
+      //user without password
+      const { password: _, ...userWithoutPassword } = user;
+
       return {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
+        user: userWithoutPassword,
       };
     });
 
     // Set new refresh token as HTTP-only cookie
-    res.cookie('refreshToken', result.refreshToken, {
+    res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
       secure: appConfig.cookies.secure,
       sameSite: appConfig.cookies.sameSite,
@@ -383,6 +410,7 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
     });
 
     sendSuccess(res, "Token refreshed successfully", {
+      user: result.user,
       accessToken: result.accessToken,
     });
   } catch (error) {
@@ -391,7 +419,10 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 };
 
 // Forgot password controller
-export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+export const forgotPassword = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { email } = req.body;
 
@@ -402,7 +433,10 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
 
     if (!user) {
       // Don't reveal if email exists or not for security
-      sendSuccess(res, "If the email exists, a password reset link has been sent");
+      sendSuccess(
+        res,
+        "If the email exists, a password reset link has been sent"
+      );
       return;
     }
 
@@ -413,21 +447,29 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     const resetToken = jwt.sign(
       { userId: user.id, type: "password_reset" },
       appConfig.jwt.passwordResetToken.secret as string,
-      { expiresIn: appConfig.jwt.passwordResetToken.expiresIn } as jwt.SignOptions
+      {
+        expiresIn: appConfig.jwt.passwordResetToken.expiresIn,
+      } as jwt.SignOptions
     );
 
     // TODO: Send email with reset token
     // For now, we'll just return success
     console.log(`Password reset token for ${email}: ${resetToken}`);
 
-    sendSuccess(res, "If the email exists, a password reset link has been sent");
+    sendSuccess(
+      res,
+      "If the email exists, a password reset link has been sent"
+    );
   } catch (error) {
     handleError(error, res, "Failed to process password reset request");
   }
 };
 
 // Reset password controller
-export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+export const resetPassword = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { token, password } = req.body;
 
@@ -437,7 +479,10 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     }
     let decoded: any;
     try {
-      decoded = jwt.verify(token, appConfig.jwt.passwordResetToken.secret as string);
+      decoded = jwt.verify(
+        token,
+        appConfig.jwt.passwordResetToken.secret as string
+      );
     } catch (error) {
       throw ErrorTypes.VALIDATION_ERROR("Invalid or expired reset token");
     }
@@ -471,7 +516,10 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
 };
 
 // Verify email controller
-export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
+export const verifyEmail = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { token } = req.body;
 
@@ -481,9 +529,14 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
     }
     let decoded: any;
     try {
-      decoded = jwt.verify(token, appConfig.jwt.emailVerificationToken.secret as string);
+      decoded = jwt.verify(
+        token,
+        appConfig.jwt.emailVerificationToken.secret as string
+      );
     } catch (error) {
-      throw ErrorTypes.VALIDATION_ERROR("Invalid or expired verification token");
+      throw ErrorTypes.VALIDATION_ERROR(
+        "Invalid or expired verification token"
+      );
     }
 
     if (decoded.type !== "email_verification") {
@@ -516,7 +569,10 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
 };
 
 // Verify phone controller
-export const verifyPhone = async (req: Request, res: Response): Promise<void> => {
+export const verifyPhone = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { phone, code } = req.body;
 
@@ -559,7 +615,10 @@ export const verifyPhone = async (req: Request, res: Response): Promise<void> =>
 };
 
 // Set user role controller
-export const addRoleToUser = async (req: Request, res: Response): Promise<void> => {
+export const addRoleToUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { userId, roleId } = req.body;
 
@@ -567,7 +626,7 @@ export const addRoleToUser = async (req: Request, res: Response): Promise<void> 
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
-    
+
     if (!user) {
       throw ErrorTypes.NOT_FOUND("User");
     }
@@ -576,7 +635,7 @@ export const addRoleToUser = async (req: Request, res: Response): Promise<void> 
     const role = await prisma.userRole.findUnique({
       where: { id: roleId },
     });
-    
+
     if (!role) {
       throw ErrorTypes.NOT_FOUND("Role");
     }
@@ -588,7 +647,7 @@ export const addRoleToUser = async (req: Request, res: Response): Promise<void> 
         roleId,
       },
     });
-    
+
     sendSuccess(res, "User role set successfully", userRole);
   } catch (error) {
     handleError(error, res, "Failed to set user role");
@@ -596,7 +655,10 @@ export const addRoleToUser = async (req: Request, res: Response): Promise<void> 
 };
 
 // Delete user role controller
-export const removeRoleFromUser = async (req: Request, res: Response): Promise<void> => {
+export const removeRoleFromUser = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { userId } = req.body;
 
@@ -604,7 +666,7 @@ export const removeRoleFromUser = async (req: Request, res: Response): Promise<v
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
-    
+
     if (!user) {
       throw ErrorTypes.NOT_FOUND("User");
     }
@@ -626,7 +688,7 @@ export const removeRoleFromUser = async (req: Request, res: Response): Promise<v
         id: existingUserRole.id,
       },
     });
-    
+
     sendSuccess(res, "User role deleted successfully");
   } catch (error) {
     handleError(error, res, "Failed to delete user role");

@@ -5,6 +5,7 @@ const createServiceSubCategorySchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
   description: z.string().min(1, "Description is required").max(500, "Description must be less than 500 characters"),
   slug: z.string().min(1, "Slug is required").max(100, "Slug must be less than 100 characters").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens").optional(),
+  orderNumber: z.number().int().min(0, "Order number must be a non-negative integer").optional(),
   isNew: z.boolean().optional().default(false),
   serviceCategoryId: z.string().min(1, "Service category ID is required"),
 });
@@ -13,6 +14,7 @@ const updateServiceSubCategorySchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name must be less than 100 characters").optional(),
   description: z.string().min(1, "Description is required").max(500, "Description must be less than 500 characters").optional(),
   slug: z.string().min(1, "Slug is required").max(100, "Slug must be less than 100 characters").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens").optional(),
+  orderNumber: z.number().int().min(0, "Order number must be a non-negative integer").optional(),
   isNew: z.boolean().optional(),
   serviceCategoryId: z.string().min(1, "Service category ID is required").optional(),
 });
@@ -32,10 +34,20 @@ const getServiceSubCategoriesQuerySchema = z.object({
   serviceCategoryId: z.string().optional(),
 });
 
+const reorderServiceSubCategoriesSchema = z.object({
+  subCategoryOrders: z.array(
+    z.object({
+      id: z.string().min(1, "Subcategory ID is required"),
+      orderNumber: z.number().int().min(0, "Order number must be a non-negative integer"),
+    })
+  ).min(1, "At least one subcategory order is required"),
+});
+
 export {
   createServiceSubCategorySchema,
   updateServiceSubCategorySchema,
   serviceSubCategoryIdSchema,
   serviceSubCategorySlugSchema,
   getServiceSubCategoriesQuerySchema,
+  reorderServiceSubCategoriesSchema,
 };

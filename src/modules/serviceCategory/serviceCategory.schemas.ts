@@ -6,6 +6,7 @@ const createServiceCategorySchema = z.object({
   description: z.string().min(1, "Description is required").max(500, "Description must be less than 500 characters"),
   icon: z.string().optional().describe("Lucide React icon name (e.g., 'Code', 'Palette', 'PenTool')"),
   slug: z.string().min(1, "Slug is required").max(100, "Slug must be less than 100 characters").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens").optional(),
+  orderNumber: z.number().int().min(0, "Order number must be a non-negative integer").optional(),
   isNew: z.boolean().optional().default(false),
 });
 
@@ -14,6 +15,7 @@ const updateServiceCategorySchema = z.object({
   description: z.string().min(1, "Description is required").max(500, "Description must be less than 500 characters").optional(),
   icon: z.string().optional().describe("Lucide React icon name (e.g., 'Code', 'Palette', 'PenTool')"),
   slug: z.string().min(1, "Slug is required").max(100, "Slug must be less than 100 characters").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens").optional(),
+  orderNumber: z.number().int().min(0, "Order number must be a non-negative integer").optional(),
   isNew: z.boolean().optional(),
 });
 
@@ -31,10 +33,20 @@ const getServiceCategoriesQuerySchema = z.object({
   search: z.string().optional(),
 });
 
+const reorderServiceCategoriesSchema = z.object({
+  categoryOrders: z.array(
+    z.object({
+      id: z.string().min(1, "Category ID is required"),
+      orderNumber: z.number().int().min(0, "Order number must be a non-negative integer"),
+    })
+  ).min(1, "At least one category order is required"),
+});
+
 export {
   createServiceCategorySchema,
   updateServiceCategorySchema,
   serviceCategoryIdSchema,
   serviceCategorySlugSchema,
   getServiceCategoriesQuerySchema,
+  reorderServiceCategoriesSchema,
 };

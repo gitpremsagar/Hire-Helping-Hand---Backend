@@ -5,14 +5,17 @@ import {
   getServiceCategoryById, 
   getServiceCategoryBySlug,
   updateServiceCategory, 
-  deleteServiceCategory 
+  deleteServiceCategory,
+  reorderServiceCategories,
+  getServiceCategoriesOrdered
 } from "./serviceCategory.controllers.js";
 import { 
   validateCreateServiceCategoryJson, 
   validateUpdateServiceCategoryJson, 
   validateServiceCategoryId,
   validateServiceCategorySlug,
-  validateGetServiceCategoriesQuery 
+  validateGetServiceCategoriesQuery,
+  validateReorderServiceCategoriesJson
 } from "./serviceCategory.validation.middlewares.js";
 import { authenticate, requireAdmin } from "../../middleware/auth.middlewares.js";
 
@@ -24,6 +27,9 @@ serviceCategoryRoutes.post("/", /*authenticate, requireAdmin,*/ validateCreateSe
 // Get all service categories with pagination and search
 serviceCategoryRoutes.get("/", validateGetServiceCategoriesQuery, getServiceCategories);
 
+// Get service categories ordered by orderNumber (for frontend display)
+serviceCategoryRoutes.get("/ordered", getServiceCategoriesOrdered);
+
 // Get a single service category by ID
 serviceCategoryRoutes.get("/:id", validateServiceCategoryId, getServiceCategoryById);
 
@@ -31,9 +37,12 @@ serviceCategoryRoutes.get("/:id", validateServiceCategoryId, getServiceCategoryB
 serviceCategoryRoutes.get("/slug/:slug", validateServiceCategorySlug, getServiceCategoryBySlug);
 
 // Update a service category
-serviceCategoryRoutes.put("/:id", authenticate, requireAdmin, validateServiceCategoryId, validateUpdateServiceCategoryJson, updateServiceCategory);
+serviceCategoryRoutes.put("/:id", /*authenticate, requireAdmin,*/ validateServiceCategoryId, validateUpdateServiceCategoryJson, updateServiceCategory);
 
 // Delete a service category
-serviceCategoryRoutes.delete("/:id", authenticate, requireAdmin, validateServiceCategoryId, deleteServiceCategory);
+serviceCategoryRoutes.delete("/:id", /*authenticate, requireAdmin,*/ validateServiceCategoryId, deleteServiceCategory);
+
+// Reorder service categories
+serviceCategoryRoutes.patch("/reorder", /*authenticate, requireAdmin,*/ validateReorderServiceCategoriesJson, reorderServiceCategories);
 
 export default serviceCategoryRoutes;
