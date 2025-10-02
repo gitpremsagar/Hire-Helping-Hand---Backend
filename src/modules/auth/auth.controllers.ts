@@ -160,6 +160,7 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
       secure: appConfig.cookies.secure,
       sameSite: appConfig.cookies.sameSite,
       maxAge: appConfig.cookies.maxAge,
+      path: "/",
     });
 
     // Generate email verification token
@@ -255,12 +256,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       secure: appConfig.cookies.secure,
       sameSite: appConfig.cookies.sameSite,
       maxAge: appConfig.cookies.maxAge,
+      path: "/",
     });
 
     // Return user data without password
     const { password: _, ...userWithoutPassword } = user;
 
-    console.log(`Sending login success notification email`);
+    // console.log(`Sending login success notification email`);
     // Send login success notification email (non-blocking)
     // emailService
     //   .sendLoginSuccessNotification(user.email, user.name)
@@ -296,6 +298,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
       httpOnly: true,
       secure: appConfig.cookies.secure,
       sameSite: appConfig.cookies.sameSite,
+      path: "/",
     });
 
     sendSuccess(res, "Logout successful");
@@ -407,6 +410,7 @@ export const refreshToken = async (
       secure: appConfig.cookies.secure,
       sameSite: appConfig.cookies.sameSite,
       maxAge: appConfig.cookies.maxAge,
+      path: "/",
     });
 
     sendSuccess(res, "Token refreshed successfully", {
@@ -454,7 +458,7 @@ export const forgotPassword = async (
 
     // TODO: Send email with reset token
     // For now, we'll just return success
-    console.log(`Password reset token for ${email}: ${resetToken}`);
+    // console.log(`Password reset token for ${email}: ${resetToken}`);
 
     sendSuccess(
       res,
