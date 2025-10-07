@@ -1,5 +1,10 @@
 import express from "express";
 import {
+  getFreelancers,
+  getFreelancer,
+  createFreelancer,
+  updateFreelancer,
+  deleteFreelancer,
   getFreelancerProfile,
   createOrUpdateFreelancerProfile,
   getFreelancerPortfolio,
@@ -40,6 +45,14 @@ import {
 } from "./freelancer.validation.middlewares.js";
 
 const freelancerRoutes = express.Router();
+
+// Freelancer routes
+freelancerRoutes.get("/", getFreelancers);
+freelancerRoutes.get("/:freelancerId", validateFreelancerIdParams, getFreelancer);
+freelancerRoutes.post("/", createFreelancer);
+freelancerRoutes.put("/:freelancerId", validateFreelancerIdParams, updateFreelancer);
+freelancerRoutes.delete("/:freelancerId", validateFreelancerIdParams, deleteFreelancer);
+
 
 // Freelancer profile routes
 freelancerRoutes.get("/:freelancerId/profile", validateFreelancerIdParams, getFreelancerProfile);

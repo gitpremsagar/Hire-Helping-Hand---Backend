@@ -990,3 +990,331 @@ export const deleteCertification = async (req: Request, res: Response): Promise<
     handleError(error, res, "Failed to delete certification");
   }
 };
+
+// Get all freelancers
+export const getFreelancers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { page = 1, limit = 100, search, experienceLevel, country, skills } = req.query;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // Build where clause
+    const where: any = {
+      isFreelancer: true,
+      isDeleted: false,
+      isSuspended: false,
+      isBlocked: false
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { bio: { contains: search as string, mode: 'insensitive' } },
+        { freelancerProfile: { title: { contains: search as string, mode: 'insensitive' } } }
+      ];
+    }
+
+    if (experienceLevel) {
+      where.freelancerProfile = {
+        ...where.freelancerProfile,
+        experienceLevel: experienceLevel as string
+      };
+    }
+
+    if (country) {
+      where.country = country as string;
+    }
+
+    if (skills) {
+      const skillArray = Array.isArray(skills) ? skills : [skills];
+      where.UserSkillRelation = {
+        some: {
+          Skill: {
+            name: { in: skillArray as string[] }
+          }
+        }
+      };
+    }
+
+    const freelancers = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        bio: true,
+        avatar: true,
+        website: true,
+        country: true,
+        state: true,
+        city: true,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        createdAt: true,
+        freelancerProfile: {
+          select: {
+            title: true,
+            overview: true,
+            experienceLevel: true,
+          }
+        },
+        portfolioItems: {
+          select: {
+            id: true,
+            title: true,
+            mediaUrls: true,
+          },
+          take: 3,
+          orderBy: {
+            createdAt: 'desc'
+          }
+        },
+        UserSkillRelation: {
+          select: {
+            Skill: {
+              select: {
+                id: true,
+                name: true,
+              }
+            }
+          }
+        },
+        freelancingServices: {
+          where: {
+            isActive: true,
+            status: 'APPROVED'
+          },
+          select: {
+            id: true,
+            title: true,
+            basePrice: true,
+            currency: true,
+            rating: true,
+            ratingCount: true,
+          },
+          take: 3,
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      skip,
+      take: Number(limit)
+    });
+
+    const total = await prisma.user.count({ where });
+
+    sendSuccess(res, "Freelancers retrieved successfully", {
+      freelancers,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / Number(limit))
+      }
+    });
+  } catch (error) {
+    handleError(error, res, "Failed to get freelancers");
+  }
+};
+
+// Get single freelancer
+export const getFreelancer = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { freelancerId } = req.params as { freelancerId: string };
+
+    const freelancer = await prisma.user.findFirst({
+      where: { 
+        id: freelancerId,
+        isFreelancer: true,
+        isDeleted: false,
+        isSuspended: false,
+        isBlocked: false
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        bio: true,
+        avatar: true,
+        website: true,
+        country: true,
+        state: true,
+        city: true,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        createdAt: true,
+        freelancerProfile: {
+          select: {
+            title: true,
+            overview: true,
+            experienceLevel: true,
+          }
+        },
+        UserSkillRelation: {
+          select: {
+            Skill: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!freelancer) {
+      throw ErrorTypes.NOT_FOUND("Freelancer");
+    }
+
+    sendSuccess(res, "Freelancer retrieved successfully", freelancer);
+  } catch (error) {
+    handleError(error, res, "Failed to get freelancer");
+  }
+};
+
+// Create freelancer
+export const createFreelancer = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, email, password, bio, avatar, website, country, state, city } = req.body;
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email,
+        isDeleted: false
+      }
+    });
+
+    if (existingUser) {
+      throw ErrorTypes.CONFLICT("User with this email already exists");
+    }
+
+    const result = await withTransaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          password, // Note: In production, hash this password
+          bio,
+          avatar,
+          website,
+          country,
+          state,
+          city,
+          isFreelancer: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          bio: true,
+          avatar: true,
+          website: true,
+          country: true,
+          state: true,
+          city: true,
+          isFreelancer: true,
+          createdAt: true,
+        }
+      });
+
+      return user;
+    });
+
+    sendSuccess(res, "Freelancer created successfully", result, 201);
+  } catch (error) {
+    handleError(error, res, "Failed to create freelancer");
+  }
+};
+
+// Update freelancer
+export const updateFreelancer = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { freelancerId } = req.params as { freelancerId: string };
+    const { name, bio, avatar, website, country, state, city } = req.body;
+
+    // Check if freelancer exists
+    const existingFreelancer = await prisma.user.findFirst({
+      where: { 
+        id: freelancerId,
+        isFreelancer: true,
+        isDeleted: false
+      }
+    });
+
+    if (!existingFreelancer) {
+      throw ErrorTypes.NOT_FOUND("Freelancer");
+    }
+
+    const freelancer = await prisma.user.update({
+      where: { id: freelancerId },
+      data: {
+        name,
+        bio,
+        avatar,
+        website,
+        country,
+        state,
+        city,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        bio: true,
+        avatar: true,
+        website: true,
+        country: true,
+        state: true,
+        city: true,
+        isFreelancer: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    });
+
+    sendSuccess(res, "Freelancer updated successfully", freelancer);
+  } catch (error) {
+    handleError(error, res, "Failed to update freelancer");
+  }
+};
+
+// Delete freelancer
+export const deleteFreelancer = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { freelancerId } = req.params as { freelancerId: string };
+
+    // Check if freelancer exists
+    const existingFreelancer = await prisma.user.findFirst({
+      where: { 
+        id: freelancerId,
+        isFreelancer: true,
+        isDeleted: false
+      }
+    });
+
+    if (!existingFreelancer) {
+      throw ErrorTypes.NOT_FOUND("Freelancer");
+    }
+
+    // Soft delete - mark as deleted instead of hard delete
+    await prisma.user.update({
+      where: { id: freelancerId },
+      data: {
+        isDeleted: true,
+        updatedAt: new Date()
+      }
+    });
+
+    sendSuccess(res, "Freelancer deleted successfully");
+  } catch (error) {
+    handleError(error, res, "Failed to delete freelancer");
+  }
+};
