@@ -15,7 +15,7 @@ import clientRoutes from "./modules/client/client.routes.js";
 const app = express();
 
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:5173"],
+  origin: ["http://localhost:3000", "http://localhost:5173","https://www.hirehelpinghand.com","https://hire-helping-hand-fron-git-e86bff-prem-sagars-projects-34ff8684.vercel.app","https://hire-helping-hand-frontend-kj522zad3.vercel.app"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
