@@ -5,7 +5,7 @@ const authRoutes = express.Router();
 authRoutes.post("/sign-up", validateSignUpJson, signUp);
 authRoutes.post("/log-in", validateLoginJson, login);
 authRoutes.post("/log-out", logout);
-authRoutes.post("/refresh-token", refreshToken);
+authRoutes.post("/refresh-access-token", refreshToken);
 authRoutes.post("/forgot-password", validateForgotPasswordJson, forgotPassword);
 authRoutes.post("/reset-password", validateResetPasswordJson, resetPassword);
 authRoutes.post("/verify-email", validateVerifyEmailJson, verifyEmail);

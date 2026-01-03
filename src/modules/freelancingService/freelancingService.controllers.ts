@@ -158,6 +158,7 @@ export const createFreelancingService = async (req: Request, res: Response): Pro
 
     sendSuccess(res, "Freelancing service created successfully", freelancingService, 201);
   } catch (error) {
+    console.log(error);
     handleError(error, res, "Failed to create freelancing service");
   }
 };

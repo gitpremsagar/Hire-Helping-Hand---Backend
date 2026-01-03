@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createServiceCategorySchema, updateServiceCategorySchema, serviceCategoryIdSchema, getServiceCategoriesQuerySchema } from "./serviceCategory.schemas.js";
+import { createServiceCategorySchema, updateServiceCategorySchema, serviceCategoryIdSchema, serviceCategorySlugSchema, getServiceCategoriesQuerySchema, reorderServiceCategoriesSchema } from "./serviceCategory.schemas.js";
 const validateCreateServiceCategoryJson = (req, res, next) => {
     try {
         const validatedData = createServiceCategorySchema.parse(req.body);
@@ -43,6 +43,21 @@ const validateServiceCategoryId = (req, res, next) => {
         });
     }
 };
+const validateServiceCategorySlug = (req, res, next) => {
+    try {
+        const validatedData = serviceCategorySlugSchema.parse(req.params);
+        // Store validated data in a custom property to avoid type conflicts
+        req.validatedParams = validatedData;
+        next();
+    }
+    catch (error) {
+        res.status(400).json({
+            success: false,
+            message: "Validation error",
+            errors: error instanceof z.ZodError ? error.issues : error,
+        });
+    }
+};
 const validateGetServiceCategoriesQuery = (req, res, next) => {
     try {
         const validatedData = getServiceCategoriesQuerySchema.parse(req.query);
@@ -58,5 +73,19 @@ const validateGetServiceCategoriesQuery = (req, res, next) => {
         });
     }
 };
-export { validateCreateServiceCategoryJson, validateUpdateServiceCategoryJson, validateServiceCategoryId, validateGetServiceCategoriesQuery };
+const validateReorderServiceCategoriesJson = (req, res, next) => {
+    try {
+        const validatedData = reorderServiceCategoriesSchema.parse(req.body);
+        req.body = validatedData;
+        next();
+    }
+    catch (error) {
+        res.status(400).json({
+            success: false,
+            message: "Validation error",
+            errors: error instanceof z.ZodError ? error.issues : error,
+        });
+    }
+};
+export { validateCreateServiceCategoryJson, validateUpdateServiceCategoryJson, validateServiceCategoryId, validateServiceCategorySlug, validateGetServiceCategoriesQuery, validateReorderServiceCategoriesJson };
 //# sourceMappingURL=serviceCategory.validation.middlewares.js.map

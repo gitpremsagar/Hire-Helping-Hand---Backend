@@ -1,0 +1,26 @@
+import "dotenv/config";
+import type { Request, Response } from "express";
+export declare const getFreelancerProfile: (req: Request, res: Response) => Promise<void>;
+export declare const createOrUpdateFreelancerProfile: (req: Request, res: Response) => Promise<void>;
+export declare const getFreelancerPortfolio: (req: Request, res: Response) => Promise<void>;
+export declare const addPortfolioItem: (req: Request, res: Response) => Promise<void>;
+export declare const updatePortfolioItem: (req: Request, res: Response) => Promise<void>;
+export declare const deletePortfolioItem: (req: Request, res: Response) => Promise<void>;
+export declare const getFreelancerEmployment: (req: Request, res: Response) => Promise<void>;
+export declare const addEmployment: (req: Request, res: Response) => Promise<void>;
+export declare const updateEmployment: (req: Request, res: Response) => Promise<void>;
+export declare const deleteEmployment: (req: Request, res: Response) => Promise<void>;
+export declare const getFreelancerEducation: (req: Request, res: Response) => Promise<void>;
+export declare const addEducation: (req: Request, res: Response) => Promise<void>;
+export declare const updateEducation: (req: Request, res: Response) => Promise<void>;
+export declare const deleteEducation: (req: Request, res: Response) => Promise<void>;
+export declare const getFreelancerCertifications: (req: Request, res: Response) => Promise<void>;
+export declare const addCertification: (req: Request, res: Response) => Promise<void>;
+export declare const updateCertification: (req: Request, res: Response) => Promise<void>;
+export declare const deleteCertification: (req: Request, res: Response) => Promise<void>;
+export declare const getFreelancers: (req: Request, res: Response) => Promise<void>;
+export declare const getFreelancer: (req: Request, res: Response) => Promise<void>;
+export declare const createFreelancer: (req: Request, res: Response) => Promise<void>;
+export declare const updateFreelancer: (req: Request, res: Response) => Promise<void>;
+export declare const deleteFreelancer: (req: Request, res: Response) => Promise<void>;
+//# sourceMappingURL=freelancer.controllers.d.ts.map

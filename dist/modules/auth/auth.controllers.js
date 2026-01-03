@@ -2,8 +2,9 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma, withTransaction } from "../../lib/prisma.js";
-import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
-import { appConfig, getRefreshTokenExpirationDate } from "../../config/app.config.js";
+import { AppError, ErrorTypes, handleError, sendSuccess, } from "../../utils/controllerErrorHandler.js";
+import { appConfig, getRefreshTokenExpirationDate, } from "../../config/app.config.js";
+import { emailService } from "../../utils/emailService.js";
 // Helper function to generate access token
 const generateAccessToken = (userId) => {
     try {
@@ -29,7 +30,9 @@ const generateRefreshToken = (userId, expiresAt) => {
             signOptions = { expiresIn: timeUntilExpiry };
         }
         else {
-            signOptions = { expiresIn: appConfig.jwt.refreshToken.expiresIn };
+            signOptions = {
+                expiresIn: appConfig.jwt.refreshToken.expiresIn,
+            };
         }
         return jwt.sign({ userId, type: "refresh" }, appConfig.jwt.refreshToken.secret, signOptions);
     }
@@ -120,15 +123,36 @@ export const signUp = async (req, res) => {
             };
         });
         // Set refresh token as HTTP-only cookie
-        res.cookie('refreshToken', result.refreshToken, {
+        res.cookie("refreshToken", result.refreshToken, {
             httpOnly: true,
             secure: appConfig.cookies.secure,
             sameSite: appConfig.cookies.sameSite,
             maxAge: appConfig.cookies.maxAge,
+            path: "/",
         });
-        sendSuccess(res, "User signed up successfully", {
+        // Generate email verification token
+        if (!appConfig.jwt.emailVerificationToken.secret) {
+            throw ErrorTypes.JWT_SECRET_MISSING();
+        }
+        const emailVerificationToken = jwt.sign({ userId: result.user.id, type: "email_verification" }, appConfig.jwt.emailVerificationToken.secret, {
+            expiresIn: appConfig.jwt.emailVerificationToken.expiresIn,
+        });
+        // Send email verification (non-blocking)
+        // console.log(`Sending email verification to: ${result.user.email}`);
+        // emailService
+        //   .sendEmailVerification(
+        //     result.user.email,
+        //     result.user.name,
+        //     emailVerificationToken
+        //   )
+        //   .catch((error) => {
+        //     console.error("Failed to send email verification:", error);
+        //     // Don't throw error to avoid breaking the signup flow
+        //   });
+        sendSuccess(res, "User signed up successfully. Please check your email to verify your account.", {
             user: result.user,
             accessToken: result.accessToken,
+            emailVerificationRequired: true,
         }, 201);
     }
     catch (error) {
@@ -175,14 +199,23 @@ export const login = async (req, res) => {
             };
         });
         // Set refresh token as HTTP-only cookie
-        res.cookie('refreshToken', result.refreshToken, {
+        res.cookie("refreshToken", result.refreshToken, {
             httpOnly: true,
             secure: appConfig.cookies.secure,
             sameSite: appConfig.cookies.sameSite,
             maxAge: appConfig.cookies.maxAge,
+            path: "/",
         });
         // Return user data without password
         const { password: _, ...userWithoutPassword } = user;
+        // console.log(`Sending login success notification email`);
+        // Send login success notification email (non-blocking)
+        // emailService
+        //   .sendLoginSuccessNotification(user.email, user.name)
+        //   .catch((error) => {
+        //     console.error("Failed to send login success notification:", error);
+        //     // Don't throw error to avoid breaking the login flow
+        //   });
         sendSuccess(res, "Login successful", {
             user: userWithoutPassword,
             accessToken: result.accessToken,
@@ -204,10 +237,11 @@ export const logout = async (req, res) => {
             });
         }
         // Clear the refresh token cookie
-        res.clearCookie('refreshToken', {
+        res.clearCookie("refreshToken", {
             httpOnly: true,
             secure: appConfig.cookies.secure,
             sameSite: appConfig.cookies.sameSite,
+            path: "/",
         });
         sendSuccess(res, "Logout successful");
     }
@@ -254,19 +288,6 @@ export const refreshToken = async (req, res) => {
         // Find user
         const user = await prisma.user.findUnique({
             where: { id: decoded.userId },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                isFreelancer: true,
-                isClient: true,
-                isEmailVerified: true,
-                isPhoneVerified: true,
-                isDeleted: true,
-                isSuspended: true,
-                isBlocked: true,
-                createdAt: true,
-            },
         });
         if (!user) {
             throw ErrorTypes.NOT_FOUND("User");
@@ -293,19 +314,24 @@ export const refreshToken = async (req, res) => {
                     expiresAt: tokenRecord.expiresAt,
                 },
             });
+            //user without password
+            const { password: _, ...userWithoutPassword } = user;
             return {
                 accessToken: newAccessToken,
                 refreshToken: newRefreshToken,
+                user: userWithoutPassword,
             };
         });
         // Set new refresh token as HTTP-only cookie
-        res.cookie('refreshToken', result.refreshToken, {
+        res.cookie("refreshToken", result.refreshToken, {
             httpOnly: true,
             secure: appConfig.cookies.secure,
             sameSite: appConfig.cookies.sameSite,
             maxAge: appConfig.cookies.maxAge,
+            path: "/",
         });
         sendSuccess(res, "Token refreshed successfully", {
+            user: result.user,
             accessToken: result.accessToken,
         });
     }
@@ -330,10 +356,12 @@ export const forgotPassword = async (req, res) => {
         if (!appConfig.jwt.passwordResetToken.secret) {
             throw ErrorTypes.JWT_SECRET_MISSING();
         }
-        const resetToken = jwt.sign({ userId: user.id, type: "password_reset" }, appConfig.jwt.passwordResetToken.secret, { expiresIn: appConfig.jwt.passwordResetToken.expiresIn });
+        const resetToken = jwt.sign({ userId: user.id, type: "password_reset" }, appConfig.jwt.passwordResetToken.secret, {
+            expiresIn: appConfig.jwt.passwordResetToken.expiresIn,
+        });
         // TODO: Send email with reset token
         // For now, we'll just return success
-        console.log(`Password reset token for ${email}: ${resetToken}`);
+        // console.log(`Password reset token for ${email}: ${resetToken}`);
         sendSuccess(res, "If the email exists, a password reset link has been sent");
     }
     catch (error) {

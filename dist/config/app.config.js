@@ -56,6 +56,23 @@ export const appConfig = {
             credentials: process.env.CORS_CREDENTIALS === "true",
         },
     },
+    // Email configuration
+    email: {
+        from: process.env.EMAIL_FROM || "noreply@hirehelpinghand.com",
+        adminEmail: process.env.ADMIN_EMAIL || "psagar172@gmail.com",
+        smtp: {
+            host: process.env.SMTP_HOST || "smtp.gmail.com",
+            port: parseInt(process.env.SMTP_PORT || "465"),
+            secure: false, // Use SSL for port 465
+            tls: {
+                rejectUnauthorized: false, // Allow self-signed certificates in development
+            },
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        },
+    },
     // Application settings
     app: {
         port: parseInt(process.env.PORT || "3000"),

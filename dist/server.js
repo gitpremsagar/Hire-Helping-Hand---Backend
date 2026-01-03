@@ -8,8 +8,17 @@ import serviceSubCategoryRoutes from "./modules/serviceSubCategory/serviceSubCat
 import userRoleRoutes from "./modules/userRole/userRole.routes.js";
 import userLanguageRoutes from "./modules/userLanguage/userLanguage.routes.js";
 import skillRoutes from "./modules/skill/skill.routes.js";
+import freelancingServiceRoutes from "./modules/freelancingService/freelancingService.routes.js";
+import freelancerRoutes from "./modules/freelancer/freelancer.routes.js";
+import clientRoutes from "./modules/client/client.routes.js";
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: ["http://localhost:3000", "http://localhost:5173"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(cookieParser());
 app.use(express.json());
 // API routes
@@ -19,6 +28,9 @@ app.use("/api/v1/service-subcategories", serviceSubCategoryRoutes);
 app.use("/api/v1/user-roles", userRoleRoutes);
 app.use("/api/v1/user-languages", userLanguageRoutes);
 app.use("/api/v1/skills", skillRoutes);
+app.use("/api/v1/freelancing-services", freelancingServiceRoutes);
+app.use("/api/v1/freelancers", freelancerRoutes);
+app.use("/api/v1/clients", clientRoutes);
 app.get("/api/v1", (req, res) => {
     res.send("Hello From API");
 });

@@ -41,6 +41,22 @@ export declare const appConfig: {
             readonly credentials: boolean;
         };
     };
+    readonly email: {
+        readonly from: string;
+        readonly adminEmail: string;
+        readonly smtp: {
+            readonly host: string;
+            readonly port: number;
+            readonly secure: false;
+            readonly tls: {
+                readonly rejectUnauthorized: false;
+            };
+            readonly auth: {
+                readonly user: string | undefined;
+                readonly pass: string | undefined;
+            };
+        };
+    };
     readonly app: {
         readonly port: number;
         readonly nodeEnv: string;

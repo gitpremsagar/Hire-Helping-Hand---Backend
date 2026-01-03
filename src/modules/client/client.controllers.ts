@@ -38,10 +38,11 @@ export const getClientProfile = async (req: Request, res: Response): Promise<voi
         contracts: {
           select: {
             id: true,
-            title: true,
-            description: true,
+            type: true,
             status: true,
-            budget: true,
+            totalFixedAmount: true,
+            startDate: true,
+            endDate: true,
             createdAt: true,
             freelancer: {
               select: {
@@ -78,8 +79,8 @@ export const getClientProfile = async (req: Request, res: Response): Promise<voi
 export const getAllClients = async (req: Request, res: Response): Promise<void> => {
   try {
     const { 
-      page = 1, 
-      limit = 10, 
+      page = '1', 
+      limit = '10', 
       search, 
       country, 
       state, 
@@ -101,8 +102,8 @@ export const getAllClients = async (req: Request, res: Response): Promise<void> 
       sortOrder?: 'asc' | 'desc';
     };
 
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
     const skip = (pageNum - 1) * limitNum;
 
     // Build where clause
@@ -257,8 +258,8 @@ export const getClientContracts = async (req: Request, res: Response): Promise<v
   try {
     const { clientId } = req.params as { clientId: string };
     const { 
-      page = 1, 
-      limit = 10, 
+      page = '1', 
+      limit = '10', 
       status,
       sortBy = 'createdAt',
       sortOrder = 'desc'
@@ -270,8 +271,8 @@ export const getClientContracts = async (req: Request, res: Response): Promise<v
       sortOrder?: 'asc' | 'desc';
     };
 
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
     const skip = (pageNum - 1) * limitNum;
 
     // Check if client exists
@@ -305,10 +306,9 @@ export const getClientContracts = async (req: Request, res: Response): Promise<v
         where,
         select: {
           id: true,
-          title: true,
-          description: true,
+          type: true,
           status: true,
-          budget: true,
+          totalFixedAmount: true,
           startDate: true,
           endDate: true,
           createdAt: true,
@@ -399,7 +399,7 @@ export const getClientStats = async (req: Request, res: Response): Promise<void>
           status: 'COMPLETED'
         },
         _sum: {
-          budget: true
+          totalFixedAmount: true
         }
       }),
       prisma.contract.aggregate({
@@ -408,7 +408,7 @@ export const getClientStats = async (req: Request, res: Response): Promise<void>
           status: 'COMPLETED'
         },
         _avg: {
-          budget: true
+          totalFixedAmount: true
         }
       })
     ]);
@@ -417,8 +417,8 @@ export const getClientStats = async (req: Request, res: Response): Promise<void>
       totalContracts,
       activeContracts,
       completedContracts,
-      totalSpent: totalSpent._sum.budget || 0,
-      averageContractValue: averageContractValue._avg.budget || 0,
+      totalSpent: totalSpent._sum?.totalFixedAmount || 0,
+      averageContractValue: averageContractValue._avg?.totalFixedAmount || 0,
       successRate: totalContracts > 0 ? (completedContracts / totalContracts) * 100 : 0
     };
 
