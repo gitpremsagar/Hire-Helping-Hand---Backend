@@ -145,23 +145,19 @@ model UserSkillRelation {
   Skill     Skill    @relation(fields: [skillId], references: [id])
 }
 
-model UserRole {
-  id                  String                @id @default(auto()) @map("_id") @db.ObjectId
-  name                String
-  description         String
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  UserAndRoleRelation UserAndRoleRelation[]
+enum AppRole {
+  ADMIN
 }
 
 model UserAndRoleRelation {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @db.ObjectId
-  roleId    String   @db.ObjectId
+  role      AppRole
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   User      User     @relation(fields: [userId], references: [id])
-  Role      UserRole @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, role])
 }
 
 model FreelancerProfile {

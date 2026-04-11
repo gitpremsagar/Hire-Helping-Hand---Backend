@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AppRole } from "@prisma/client";
 // Validation schemas
 const signUpSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
@@ -31,14 +32,11 @@ const verifyPhoneSchema = z.object({
 });
 const setUserRoleSchema = z.object({
     userId: z.string().min(1, "User ID is required"),
-    roleId: z.string().min(1, "Role ID is required"),
-});
-const updateUserRoleSchema = z.object({
-    userId: z.string().min(1, "User ID is required"),
-    roleId: z.string().min(1, "Role ID is required"),
+    role: z.nativeEnum(AppRole),
 });
 const deleteUserRoleSchema = z.object({
     userId: z.string().min(1, "User ID is required"),
+    role: z.nativeEnum(AppRole),
 });
-export { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, setUserRoleSchema, updateUserRoleSchema, deleteUserRoleSchema, };
+export { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, setUserRoleSchema, deleteUserRoleSchema, };
 //# sourceMappingURL=auth.schemas.js.map

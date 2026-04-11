@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { AppRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError, ErrorTypes } from "../utils/controllerErrorHandler.js";
 import { appConfig } from "../config/app.config.js";
@@ -211,17 +212,11 @@ export const requireAdmin = async (req, res, next) => {
             });
             return;
         }
-        // Check if user has admin role
         const userRole = await prisma.userAndRoleRelation.findFirst({
             where: {
                 userId: req.user.id,
-                Role: {
-                    name: "admin"
-                }
+                role: AppRole.ADMIN,
             },
-            include: {
-                Role: true
-            }
         });
         if (!userRole) {
             res.status(403).json({

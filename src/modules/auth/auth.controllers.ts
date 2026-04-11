@@ -2,6 +2,7 @@ import "dotenv/config";
 import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { AppRole } from "@prisma/client";
 import { prisma, withTransaction } from "../../lib/prisma.js";
 import {
   AppError,
@@ -624,9 +625,8 @@ export const addRoleToUser = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { userId, roleId } = req.body;
+    const { userId, role } = req.body as { userId: string; role: AppRole };
 
-    // Check if user exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -635,20 +635,18 @@ export const addRoleToUser = async (
       throw ErrorTypes.NOT_FOUND("User");
     }
 
-    // Check if role exists
-    const role = await prisma.userRole.findUnique({
-      where: { id: roleId },
+    const existingAssignment = await prisma.userAndRoleRelation.findUnique({
+      where: { userId_role: { userId, role } },
     });
 
-    if (!role) {
-      throw ErrorTypes.NOT_FOUND("Role");
+    if (existingAssignment) {
+      throw ErrorTypes.ALREADY_EXISTS("User role assignment");
     }
 
-    // Set user role
     const userRole = await prisma.userAndRoleRelation.create({
       data: {
         userId,
-        roleId,
+        role,
       },
     });
 
@@ -664,9 +662,8 @@ export const removeRoleFromUser = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { userId } = req.body;
+    const { userId, role } = req.body as { userId: string; role: AppRole };
 
-    // Check if user exists
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -675,18 +672,14 @@ export const removeRoleFromUser = async (
       throw ErrorTypes.NOT_FOUND("User");
     }
 
-    // Check if user role relation exists
-    const existingUserRole = await prisma.userAndRoleRelation.findFirst({
-      where: {
-        userId,
-      },
+    const existingUserRole = await prisma.userAndRoleRelation.findUnique({
+      where: { userId_role: { userId, role } },
     });
 
     if (!existingUserRole) {
       throw ErrorTypes.NOT_FOUND("User role assignment");
     }
 
-    // Delete user role
     await prisma.userAndRoleRelation.delete({
       where: {
         id: existingUserRole.id,

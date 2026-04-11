@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, setUserRoleSchema, updateUserRoleSchema, deleteUserRoleSchema } from "./auth.schemas.js";
+import { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, setUserRoleSchema, deleteUserRoleSchema } from "./auth.schemas.js";
 const validateSignUpJson = (req, res, next) => {
     try {
         const validatedData = signUpSchema.parse(req.body);

@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, setUserRoleSchema, updateUserRoleSchema, deleteUserRoleSchema } from "./auth.schemas.js";
+import { signUpSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema, verifyPhoneSchema, setUserRoleSchema, deleteUserRoleSchema } from "./auth.schemas.js";
 
 const validateSignUpJson = (req: Request, res: Response, next: NextFunction) => {
     try {
