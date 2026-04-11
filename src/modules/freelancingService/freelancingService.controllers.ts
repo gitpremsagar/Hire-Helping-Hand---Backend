@@ -1,6 +1,11 @@
 import type { Request, Response } from "express";
+import type { ServiceCategory, ServiceSubCategory } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
+import {
+  categoryAndSubcategoryMatch,
+  enrichCategoryFields,
+} from "../../constants/service-taxonomy.js";
 
 // Create a new freelancing service
 export const createFreelancingService = async (req: Request, res: Response): Promise<void> => {
@@ -53,22 +58,8 @@ export const createFreelancingService = async (req: Request, res: Response): Pro
       throw new AppError("Freelancer is not active or not a freelancer", 400);
     }
 
-    // Check if service category exists
-    const serviceCategory = await prisma.serviceCategory.findUnique({
-      where: { id: serviceCategoryId }
-    });
-
-    if (!serviceCategory) {
-      throw ErrorTypes.NOT_FOUND("Service category");
-    }
-
-    // Check if service subcategory exists
-    const serviceSubCategory = await prisma.serviceSubCategory.findUnique({
-      where: { id: serviceSubCategoryId }
-    });
-
-    if (!serviceSubCategory) {
-      throw ErrorTypes.NOT_FOUND("Service subcategory");
+    if (!categoryAndSubcategoryMatch(serviceCategoryId, serviceSubCategoryId)) {
+      throw new AppError("Service subcategory does not belong to the selected category", 400);
     }
 
     // Generate unique slug
@@ -88,8 +79,8 @@ export const createFreelancingService = async (req: Request, res: Response): Pro
         title,
         description,
         slug,
-        serviceCategoryId,
-        serviceSubCategoryId,
+        serviceCategory: serviceCategoryId,
+        serviceSubCategory: serviceSubCategoryId,
         basePrice,
         currency: currency || "USD",
         isCustomPricing: isCustomPricing || false,
@@ -141,22 +132,17 @@ export const createFreelancingService = async (req: Request, res: Response): Pro
             avatar: true
           }
         },
-        ServiceCategory: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        ServiceSubCategory: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
+        serviceCategory: true,
+        serviceSubCategory: true
       }
     });
 
-    sendSuccess(res, "Freelancing service created successfully", freelancingService, 201);
+    sendSuccess(
+      res,
+      "Freelancing service created successfully",
+      enrichCategoryFields(freelancingService),
+      201
+    );
   } catch (error) {
     console.log(error);
     handleError(error, res, "Failed to create freelancing service");
@@ -170,8 +156,8 @@ export const getFreelancingServices = async (req: Request, res: Response): Promi
       page: number;
       limit: number;
       search?: string;
-      categoryId?: string;
-      subCategoryId?: string;
+      categoryId?: ServiceCategory;
+      subCategoryId?: ServiceSubCategory;
       freelancerId?: string;
       status?: string;
       minPrice?: number;
@@ -209,11 +195,11 @@ export const getFreelancingServices = async (req: Request, res: Response): Promi
     }
 
     if (categoryId) {
-      whereClause.serviceCategoryId = categoryId;
+      whereClause.serviceCategory = categoryId;
     }
 
     if (subCategoryId) {
-      whereClause.serviceSubCategoryId = subCategoryId;
+      whereClause.serviceSubCategory = subCategoryId;
     }
 
     if (freelancerId) {
@@ -300,18 +286,8 @@ export const getFreelancingServices = async (req: Request, res: Response): Promi
               city: true
             }
           },
-          ServiceCategory: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
-          ServiceSubCategory: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
+          serviceCategory: true,
+          serviceSubCategory: true,
           _count: {
             select: {
               reviews: true,
@@ -331,7 +307,7 @@ export const getFreelancingServices = async (req: Request, res: Response): Promi
     const hasPrevPage = page > 1;
 
     sendSuccess(res, "Freelancing services retrieved successfully", {
-      freelancingServices,
+      freelancingServices: freelancingServices.map((fs) => enrichCategoryFields(fs)),
       pagination: {
         currentPage: page,
         totalPages,
@@ -419,20 +395,8 @@ export const getFreelancingServiceById = async (req: Request, res: Response): Pr
             }
           }
         },
-        ServiceCategory: {
-          select: {
-            id: true,
-            name: true,
-            description: true
-          }
-        },
-        ServiceSubCategory: {
-          select: {
-            id: true,
-            name: true,
-            description: true
-          }
-        },
+        serviceCategory: true,
+        serviceSubCategory: true,
         packages: {
           select: {
             id: true,
@@ -480,7 +444,7 @@ export const getFreelancingServiceById = async (req: Request, res: Response): Pr
       }
     });
 
-    sendSuccess(res, "Freelancing service retrieved successfully", freelancingService);
+    sendSuccess(res, "Freelancing service retrieved successfully", enrichCategoryFields(freelancingService));
   } catch (error) {
     handleError(error, res, "Failed to retrieve freelancing service");
   }
@@ -490,21 +454,53 @@ export const getFreelancingServiceById = async (req: Request, res: Response): Pr
 export const updateFreelancingService = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = (req as any).validatedParams as { id: string };
-    const updateData = req.body;
+    const updateData = req.body as Record<string, unknown> & {
+      serviceCategoryId?: ServiceCategory;
+      serviceSubCategoryId?: ServiceSubCategory;
+      title?: string;
+      slug?: string;
+    };
 
-    // Check if freelancing service exists
     const existingService = await prisma.freelancingService.findUnique({
       where: { id },
-      select: { id: true, freelancerId: true, title: true, slug: true }
+      select: {
+        id: true,
+        freelancerId: true,
+        title: true,
+        slug: true,
+        serviceCategory: true,
+        serviceSubCategory: true,
+      },
     });
 
     if (!existingService) {
       throw ErrorTypes.NOT_FOUND("Freelancing service");
     }
 
-    // If title is being updated, generate new slug
+    const { serviceCategoryId, serviceSubCategoryId, ...rest } = updateData;
+    const data: Record<string, unknown> = { ...rest };
+    delete data.serviceCategoryId;
+    delete data.serviceSubCategoryId;
+
+    if (serviceCategoryId !== undefined) {
+      data.serviceCategory = serviceCategoryId;
+    }
+    if (serviceSubCategoryId !== undefined) {
+      data.serviceSubCategory = serviceSubCategoryId;
+    }
+
+    const nextCategory = (data.serviceCategory as ServiceCategory | undefined) ?? existingService.serviceCategory;
+    const nextSub =
+      (data.serviceSubCategory as ServiceSubCategory | undefined) ?? existingService.serviceSubCategory;
+    if (!categoryAndSubcategoryMatch(nextCategory, nextSub)) {
+      throw new AppError("Service subcategory does not belong to the selected category", 400);
+    }
+
     if (updateData.title && updateData.title !== existingService.title) {
-      const baseSlug = updateData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const baseSlug = String(updateData.title)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
       let slug = baseSlug;
       let counter = 1;
 
@@ -513,13 +509,12 @@ export const updateFreelancingService = async (req: Request, res: Response): Pro
         counter++;
       }
 
-      updateData.slug = slug;
+      data.slug = slug;
     }
 
-    // Update the freelancing service
     const updatedFreelancingService = await prisma.freelancingService.update({
       where: { id },
-      data: updateData,
+      data: data as any,
       select: {
         id: true,
         title: true,
@@ -541,25 +536,19 @@ export const updateFreelancingService = async (req: Request, res: Response): Pro
           select: {
             id: true,
             name: true,
-            avatar: true
-          }
+            avatar: true,
+          },
         },
-        ServiceCategory: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        ServiceSubCategory: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      }
+        serviceCategory: true,
+        serviceSubCategory: true,
+      },
     });
 
-    sendSuccess(res, "Freelancing service updated successfully", updatedFreelancingService);
+    sendSuccess(
+      res,
+      "Freelancing service updated successfully",
+      enrichCategoryFields(updatedFreelancingService)
+    );
   } catch (error) {
     handleError(error, res, "Failed to update freelancing service");
   }
@@ -649,18 +638,8 @@ export const getFreelancingServicesByFreelancer = async (req: Request, res: Resp
           ratingCount: true,
           createdAt: true,
           updatedAt: true,
-          ServiceCategory: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
-          ServiceSubCategory: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
+          serviceCategory: true,
+          serviceSubCategory: true,
           _count: {
             select: {
               reviews: true,
@@ -680,7 +659,7 @@ export const getFreelancingServicesByFreelancer = async (req: Request, res: Resp
     const hasPrevPage = page > 1;
 
     sendSuccess(res, "Freelancing services retrieved successfully", {
-      freelancingServices,
+      freelancingServices: freelancingServices.map((fs) => enrichCategoryFields(fs)),
       pagination: {
         currentPage: page,
         totalPages,

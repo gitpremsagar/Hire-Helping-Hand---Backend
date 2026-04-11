@@ -102,19 +102,15 @@ model Skill {
   id                   String   @id @default(auto()) @map("_id") @db.ObjectId
   name                 String
   description          String
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  serviceCategoryId    String   @db.ObjectId
-  serviceSubCategoryId String   @db.ObjectId
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  serviceCategory   ServiceCategory
+  serviceSubCategory ServiceSubCategory
 
   // Relations
   UserSkillRelation                 UserSkillRelation[]
   SkillToFreelancingServiceRelation SkillToFreelancingServiceRelation[]
   SkillToJobRelation                SkillToJobRelation[]
-
-  // Back-relations
-  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
-  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
 }
 
 model SkillToFreelancingServiceRelation {
@@ -191,12 +187,10 @@ model PortfolioItem {
   updatedAt    DateTime @updatedAt
 
   //categorization
-  serviceCategoryId    String @db.ObjectId
-  serviceSubCategoryId String @db.ObjectId
+  serviceCategory   ServiceCategory
+  serviceSubCategory ServiceSubCategory
 
-  freelancer         User               @relation(fields: [freelancerId], references: [id])
-  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
-  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
+  freelancer User @relation(fields: [freelancerId], references: [id])
 }
 
 model Employment {
@@ -211,12 +205,10 @@ model Employment {
   updatedAt    DateTime  @updatedAt
 
   //categorization
-  serviceCategoryId    String @db.ObjectId
-  serviceSubCategoryId String @db.ObjectId
+  serviceCategory   ServiceCategory
+  serviceSubCategory ServiceSubCategory
 
-  freelancer         User               @relation(fields: [freelancerId], references: [id])
-  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
-  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
+  freelancer User @relation(fields: [freelancerId], references: [id])
 }
 
 model Education {
@@ -231,12 +223,10 @@ model Education {
   updatedAt    DateTime  @updatedAt
 
   //categorization
-  serviceCategoryId    String @db.ObjectId
-  serviceSubCategoryId String @db.ObjectId
+  serviceCategory   ServiceCategory
+  serviceSubCategory ServiceSubCategory
 
-  freelancer         User               @relation(fields: [freelancerId], references: [id])
-  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
-  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
+  freelancer User @relation(fields: [freelancerId], references: [id])
 }
 
 model Certification {
@@ -252,12 +242,10 @@ model Certification {
   updatedAt     DateTime  @updatedAt
 
   //categorization
-  serviceCategoryId    String @db.ObjectId
-  serviceSubCategoryId String @db.ObjectId
+  serviceCategory   ServiceCategory
+  serviceSubCategory ServiceSubCategory
 
-  freelancer         User               @relation(fields: [freelancerId], references: [id])
-  ServiceCategory    ServiceCategory    @relation(fields: [serviceCategoryId], references: [id])
-  ServiceSubCategory ServiceSubCategory @relation(fields: [serviceSubCategoryId], references: [id])
+  freelancer User @relation(fields: [freelancerId], references: [id])
 }
 
 model FreelancingService {
@@ -268,8 +256,8 @@ model FreelancingService {
   slug         String @unique // URL-friendly identifier
 
   //categorization
-  serviceCategoryId    String @db.ObjectId
-  serviceSubCategoryId String @db.ObjectId
+  serviceCategory   ServiceCategory
+  serviceSubCategory ServiceSubCategory
 
   // Pricing & Packages
   basePrice       Float?
@@ -346,8 +334,6 @@ model FreelancingService {
   packages                          FreelancingServicePackage[]
   reviews                           FreelancingServiceReview[]
   contracts                         Contract[]
-  ServiceCategory                   ServiceCategory                     @relation(fields: [serviceCategoryId], references: [id])
-  ServiceSubCategory                ServiceSubCategory                  @relation(fields: [serviceSubCategoryId], references: [id])
   SkillToFreelancingServiceRelation SkillToFreelancingServiceRelation[]
 }
 
@@ -490,8 +476,8 @@ model Job {
   title                String
   attachments          String[]
   deadline             DateTime
-  serviceCategoryId    String   @db.ObjectId
-  serviceSubCategoryId String   @db.ObjectId
+  serviceCategory   ServiceCategory
+  serviceSubCategory ServiceSubCategory
 
   // Additional essential fields
   slug        String        @unique // URL-friendly identifier
@@ -556,8 +542,6 @@ model Job {
 
   //relations
   client             User                 @relation(fields: [clientId], references: [id])
-  ServiceCategory    ServiceCategory      @relation(fields: [serviceCategoryId], references: [id])
-  ServiceSubCategory ServiceSubCategory   @relation(fields: [serviceSubCategoryId], references: [id])
   Contract           Contract?
   proposals          Proposal[]
   SkillToJobRelation SkillToJobRelation[]
@@ -607,6 +591,60 @@ enum BoostLevel {
   ULTRA
 }
 
+enum ServiceCategory {
+  PROGRAMMING_AND_TECH
+  DESIGN_AND_CREATIVE
+  DIGITAL_MARKETING
+  WRITING_AND_TRANSLATION
+  VIDEO_AND_ANIMATION
+  MUSIC_AND_AUDIO
+  BUSINESS_SUPPORT
+  DATA_AND_AI
+  LEGAL_AND_FINANCE
+  EDUCATION_AND_TRAINING
+}
+
+enum ServiceSubCategory {
+  WEB_DEVELOPMENT
+  MOBILE_DEVELOPMENT
+  DESKTOP_SOFTWARE
+  DEVOPS_CLOUD
+  QA_TESTING
+  GAME_DEVELOPMENT
+  GRAPHIC_DESIGN
+  UI_UX_DESIGN
+  LOGO_BRANDING
+  ILLUSTRATION
+  PHOTOGRAPHY_EDITING
+  SEO_SEM
+  SOCIAL_MEDIA_MARKETING
+  CONTENT_MARKETING
+  EMAIL_MARKETING
+  CONTENT_WRITING
+  TECHNICAL_WRITING
+  TRANSLATION
+  PROOFREADING
+  VIDEO_EDITING
+  MOTION_GRAPHICS
+  ANIMATION_2D_3D
+  AUDIO_PRODUCTION
+  VOICE_OVER
+  MUSIC_COMPOSITION
+  VIRTUAL_ASSISTANT
+  PROJECT_MANAGEMENT
+  DATA_ENTRY
+  DATA_ANALYSIS
+  MACHINE_LEARNING
+  DATA_ENGINEERING
+  DATA_VISUALIZATION
+  LEGAL_CONSULTING
+  ACCOUNTING_BOOKKEEPING
+  FINANCIAL_MODELING
+  ONLINE_TUTORING
+  COURSE_CREATION
+  CORPORATE_TRAINING
+}
+
 // =================================================================
 model BlogPost {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -647,47 +685,4 @@ model PhoneVerificationToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model ServiceCategory {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  description String
-  icon        String?  // Icon svg
-  orderNumber Int      @default(0) // Order number for the service category
-  slug        String   @unique 
-  isNew       Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  ServiceSubCategory ServiceSubCategory[]
-  FreelancingService FreelancingService[]
-  Job                Job[]
-  Skill              Skill[]
-  PortfolioItem      PortfolioItem[]
-  Employment         Employment[]
-  Education          Education[]
-  Certification      Certification[]
-}
-
-model ServiceSubCategory {
-  id                String   @id @default(auto()) @map("_id") @db.ObjectId
-  name              String
-  description       String
-  orderNumber       Int      @default(0) // Order number for the service sub category
-  slug              String   @unique 
-  icon              String?  // Icon svg
-  isNew             Boolean  @default(false)
-  serviceCategoryId String   @db.ObjectId
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  ServiceCategory    ServiceCategory      @relation(fields: [serviceCategoryId], references: [id])
-  FreelancingService FreelancingService[]
-  Job                Job[]
-  Skill              Skill[]
-  PortfolioItem      PortfolioItem[]
-  Employment         Employment[]
-  Education          Education[]
-  Certification      Certification[]
 }

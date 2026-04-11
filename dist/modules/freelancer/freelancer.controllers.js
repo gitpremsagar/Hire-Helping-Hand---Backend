@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { prisma, withTransaction } from "../../lib/prisma.js";
 import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
+import { categoryAndSubcategoryMatch, enrichCategoryFields } from "../../constants/service-taxonomy.js";
 // Get freelancer profile
 export const getFreelancerProfile = async (req, res) => {
     try {
@@ -218,18 +219,8 @@ export const getFreelancerPortfolio = async (req, res) => {
                 mediaUrls: true,
                 projectUrl: true,
                 createdAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             },
             orderBy: {
                 createdAt: 'desc'
@@ -243,7 +234,7 @@ export const getFreelancerPortfolio = async (req, res) => {
             }
         });
         sendSuccess(res, "Portfolio items retrieved successfully", {
-            portfolioItems,
+            portfolioItems: portfolioItems.map((p) => enrichCategoryFields(p)),
             pagination: {
                 page: Number(page),
                 limit: Number(limit),
@@ -272,6 +263,9 @@ export const addPortfolioItem = async (req, res) => {
         if (!freelancer) {
             throw ErrorTypes.NOT_FOUND("Freelancer");
         }
+        if (!categoryAndSubcategoryMatch(serviceCategoryId, serviceSubCategoryId)) {
+            throw new AppError("Service subcategory does not belong to the selected category", 400);
+        }
         const portfolioItem = await prisma.portfolioItem.create({
             data: {
                 freelancerId,
@@ -279,8 +273,8 @@ export const addPortfolioItem = async (req, res) => {
                 description,
                 mediaUrls,
                 projectUrl,
-                serviceCategoryId,
-                serviceSubCategoryId,
+                serviceCategory: serviceCategoryId,
+                serviceSubCategory: serviceSubCategoryId,
             },
             select: {
                 id: true,
@@ -289,21 +283,11 @@ export const addPortfolioItem = async (req, res) => {
                 mediaUrls: true,
                 projectUrl: true,
                 createdAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             }
         });
-        sendSuccess(res, "Portfolio item added successfully", portfolioItem, 201);
+        sendSuccess(res, "Portfolio item added successfully", enrichCategoryFields(portfolioItem), 201);
     }
     catch (error) {
         handleError(error, res, "Failed to add portfolio item");
@@ -319,10 +303,20 @@ export const updatePortfolioItem = async (req, res) => {
             where: {
                 id: portfolioItemId,
                 freelancerId,
-            }
+            },
+            select: {
+                id: true,
+                serviceCategory: true,
+                serviceSubCategory: true,
+            },
         });
         if (!existingItem) {
             throw ErrorTypes.NOT_FOUND("Portfolio item");
+        }
+        const nextCat = serviceCategoryId ?? existingItem.serviceCategory;
+        const nextSub = serviceSubCategoryId ?? existingItem.serviceSubCategory;
+        if (!categoryAndSubcategoryMatch(nextCat, nextSub)) {
+            throw new AppError("Service subcategory does not belong to the selected category", 400);
         }
         const portfolioItem = await prisma.portfolioItem.update({
             where: { id: portfolioItemId },
@@ -331,8 +325,8 @@ export const updatePortfolioItem = async (req, res) => {
                 description,
                 mediaUrls,
                 projectUrl,
-                serviceCategoryId,
-                serviceSubCategoryId,
+                ...(serviceCategoryId !== undefined && { serviceCategory: serviceCategoryId }),
+                ...(serviceSubCategoryId !== undefined && { serviceSubCategory: serviceSubCategoryId }),
             },
             select: {
                 id: true,
@@ -342,21 +336,11 @@ export const updatePortfolioItem = async (req, res) => {
                 projectUrl: true,
                 createdAt: true,
                 updatedAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             }
         });
-        sendSuccess(res, "Portfolio item updated successfully", portfolioItem);
+        sendSuccess(res, "Portfolio item updated successfully", enrichCategoryFields(portfolioItem));
     }
     catch (error) {
         handleError(error, res, "Failed to update portfolio item");
@@ -401,24 +385,14 @@ export const getFreelancerEmployment = async (req, res) => {
                 endDate: true,
                 description: true,
                 createdAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             },
             orderBy: {
                 startDate: 'desc'
             }
         });
-        sendSuccess(res, "Employment history retrieved successfully", employments);
+        sendSuccess(res, "Employment history retrieved successfully", employments.map((e) => enrichCategoryFields(e)));
     }
     catch (error) {
         handleError(error, res, "Failed to get employment history");
@@ -440,6 +414,9 @@ export const addEmployment = async (req, res) => {
         if (!freelancer) {
             throw ErrorTypes.NOT_FOUND("Freelancer");
         }
+        if (!categoryAndSubcategoryMatch(serviceCategoryId, serviceSubCategoryId)) {
+            throw new AppError("Service subcategory does not belong to the selected category", 400);
+        }
         const employment = await prisma.employment.create({
             data: {
                 freelancerId,
@@ -448,8 +425,8 @@ export const addEmployment = async (req, res) => {
                 startDate: new Date(startDate),
                 endDate: endDate ? new Date(endDate) : null,
                 description,
-                serviceCategoryId,
-                serviceSubCategoryId,
+                serviceCategory: serviceCategoryId,
+                serviceSubCategory: serviceSubCategoryId,
             },
             select: {
                 id: true,
@@ -459,21 +436,11 @@ export const addEmployment = async (req, res) => {
                 endDate: true,
                 description: true,
                 createdAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             }
         });
-        sendSuccess(res, "Employment added successfully", employment, 201);
+        sendSuccess(res, "Employment added successfully", enrichCategoryFields(employment), 201);
     }
     catch (error) {
         handleError(error, res, "Failed to add employment");
@@ -489,10 +456,20 @@ export const updateEmployment = async (req, res) => {
             where: {
                 id: employmentId,
                 freelancerId,
-            }
+            },
+            select: {
+                id: true,
+                serviceCategory: true,
+                serviceSubCategory: true,
+            },
         });
         if (!existingEmployment) {
             throw ErrorTypes.NOT_FOUND("Employment");
+        }
+        const nextEmpCat = serviceCategoryId ?? existingEmployment.serviceCategory;
+        const nextEmpSub = serviceSubCategoryId ?? existingEmployment.serviceSubCategory;
+        if (!categoryAndSubcategoryMatch(nextEmpCat, nextEmpSub)) {
+            throw new AppError("Service subcategory does not belong to the selected category", 400);
         }
         const employment = await prisma.employment.update({
             where: { id: employmentId },
@@ -502,8 +479,8 @@ export const updateEmployment = async (req, res) => {
                 startDate: new Date(startDate),
                 endDate: endDate ? new Date(endDate) : null,
                 description,
-                serviceCategoryId,
-                serviceSubCategoryId,
+                ...(serviceCategoryId !== undefined && { serviceCategory: serviceCategoryId }),
+                ...(serviceSubCategoryId !== undefined && { serviceSubCategory: serviceSubCategoryId }),
             },
             select: {
                 id: true,
@@ -514,21 +491,11 @@ export const updateEmployment = async (req, res) => {
                 description: true,
                 createdAt: true,
                 updatedAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             }
         });
-        sendSuccess(res, "Employment updated successfully", employment);
+        sendSuccess(res, "Employment updated successfully", enrichCategoryFields(employment));
     }
     catch (error) {
         handleError(error, res, "Failed to update employment");
@@ -573,24 +540,14 @@ export const getFreelancerEducation = async (req, res) => {
                 startDate: true,
                 endDate: true,
                 createdAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             },
             orderBy: {
                 startDate: 'desc'
             }
         });
-        sendSuccess(res, "Education retrieved successfully", educations);
+        sendSuccess(res, "Education retrieved successfully", educations.map((e) => enrichCategoryFields(e)));
     }
     catch (error) {
         handleError(error, res, "Failed to get education");
@@ -612,6 +569,9 @@ export const addEducation = async (req, res) => {
         if (!freelancer) {
             throw ErrorTypes.NOT_FOUND("Freelancer");
         }
+        if (!categoryAndSubcategoryMatch(serviceCategoryId, serviceSubCategoryId)) {
+            throw new AppError("Service subcategory does not belong to the selected category", 400);
+        }
         const education = await prisma.education.create({
             data: {
                 freelancerId,
@@ -620,8 +580,8 @@ export const addEducation = async (req, res) => {
                 field,
                 startDate: startDate ? new Date(startDate) : null,
                 endDate: endDate ? new Date(endDate) : null,
-                serviceCategoryId,
-                serviceSubCategoryId,
+                serviceCategory: serviceCategoryId,
+                serviceSubCategory: serviceSubCategoryId,
             },
             select: {
                 id: true,
@@ -631,21 +591,11 @@ export const addEducation = async (req, res) => {
                 startDate: true,
                 endDate: true,
                 createdAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             }
         });
-        sendSuccess(res, "Education added successfully", education, 201);
+        sendSuccess(res, "Education added successfully", enrichCategoryFields(education), 201);
     }
     catch (error) {
         handleError(error, res, "Failed to add education");
@@ -661,10 +611,20 @@ export const updateEducation = async (req, res) => {
             where: {
                 id: educationId,
                 freelancerId,
-            }
+            },
+            select: {
+                id: true,
+                serviceCategory: true,
+                serviceSubCategory: true,
+            },
         });
         if (!existingEducation) {
             throw ErrorTypes.NOT_FOUND("Education");
+        }
+        const nextEduCat = serviceCategoryId ?? existingEducation.serviceCategory;
+        const nextEduSub = serviceSubCategoryId ?? existingEducation.serviceSubCategory;
+        if (!categoryAndSubcategoryMatch(nextEduCat, nextEduSub)) {
+            throw new AppError("Service subcategory does not belong to the selected category", 400);
         }
         const education = await prisma.education.update({
             where: { id: educationId },
@@ -674,8 +634,8 @@ export const updateEducation = async (req, res) => {
                 field,
                 startDate: startDate ? new Date(startDate) : null,
                 endDate: endDate ? new Date(endDate) : null,
-                serviceCategoryId,
-                serviceSubCategoryId,
+                ...(serviceCategoryId !== undefined && { serviceCategory: serviceCategoryId }),
+                ...(serviceSubCategoryId !== undefined && { serviceSubCategory: serviceSubCategoryId }),
             },
             select: {
                 id: true,
@@ -686,21 +646,11 @@ export const updateEducation = async (req, res) => {
                 endDate: true,
                 createdAt: true,
                 updatedAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             }
         });
-        sendSuccess(res, "Education updated successfully", education);
+        sendSuccess(res, "Education updated successfully", enrichCategoryFields(education));
     }
     catch (error) {
         handleError(error, res, "Failed to update education");
@@ -746,24 +696,14 @@ export const getFreelancerCertifications = async (req, res) => {
                 credentialId: true,
                 credentialUrl: true,
                 createdAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             },
             orderBy: {
                 issuedAt: 'desc'
             }
         });
-        sendSuccess(res, "Certifications retrieved successfully", certifications);
+        sendSuccess(res, "Certifications retrieved successfully", certifications.map((c) => enrichCategoryFields(c)));
     }
     catch (error) {
         handleError(error, res, "Failed to get certifications");
@@ -785,6 +725,9 @@ export const addCertification = async (req, res) => {
         if (!freelancer) {
             throw ErrorTypes.NOT_FOUND("Freelancer");
         }
+        if (!categoryAndSubcategoryMatch(serviceCategoryId, serviceSubCategoryId)) {
+            throw new AppError("Service subcategory does not belong to the selected category", 400);
+        }
         const certification = await prisma.certification.create({
             data: {
                 freelancerId,
@@ -794,8 +737,8 @@ export const addCertification = async (req, res) => {
                 expiresAt: expiresAt ? new Date(expiresAt) : null,
                 credentialId,
                 credentialUrl,
-                serviceCategoryId,
-                serviceSubCategoryId,
+                serviceCategory: serviceCategoryId,
+                serviceSubCategory: serviceSubCategoryId,
             },
             select: {
                 id: true,
@@ -806,21 +749,11 @@ export const addCertification = async (req, res) => {
                 credentialId: true,
                 credentialUrl: true,
                 createdAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             }
         });
-        sendSuccess(res, "Certification added successfully", certification, 201);
+        sendSuccess(res, "Certification added successfully", enrichCategoryFields(certification), 201);
     }
     catch (error) {
         handleError(error, res, "Failed to add certification");
@@ -836,10 +769,20 @@ export const updateCertification = async (req, res) => {
             where: {
                 id: certificationId,
                 freelancerId,
-            }
+            },
+            select: {
+                id: true,
+                serviceCategory: true,
+                serviceSubCategory: true,
+            },
         });
         if (!existingCertification) {
             throw ErrorTypes.NOT_FOUND("Certification");
+        }
+        const nextCertCat = serviceCategoryId ?? existingCertification.serviceCategory;
+        const nextCertSub = serviceSubCategoryId ?? existingCertification.serviceSubCategory;
+        if (!categoryAndSubcategoryMatch(nextCertCat, nextCertSub)) {
+            throw new AppError("Service subcategory does not belong to the selected category", 400);
         }
         const certification = await prisma.certification.update({
             where: { id: certificationId },
@@ -850,8 +793,8 @@ export const updateCertification = async (req, res) => {
                 expiresAt: expiresAt ? new Date(expiresAt) : null,
                 credentialId,
                 credentialUrl,
-                serviceCategoryId,
-                serviceSubCategoryId,
+                ...(serviceCategoryId !== undefined && { serviceCategory: serviceCategoryId }),
+                ...(serviceSubCategoryId !== undefined && { serviceSubCategory: serviceSubCategoryId }),
             },
             select: {
                 id: true,
@@ -863,21 +806,11 @@ export const updateCertification = async (req, res) => {
                 credentialUrl: true,
                 createdAt: true,
                 updatedAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
+                serviceCategory: true,
+                serviceSubCategory: true
             }
         });
-        sendSuccess(res, "Certification updated successfully", certification);
+        sendSuccess(res, "Certification updated successfully", enrichCategoryFields(certification));
     }
     catch (error) {
         handleError(error, res, "Failed to update certification");

@@ -1,69 +1,42 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
+import { categoryAndSubcategoryMatch, enrichCategoryFields, } from "../../constants/service-taxonomy.js";
 // Create a new skill
 export const createSkill = async (req, res) => {
     try {
         const { name, description, serviceCategoryId, serviceSubCategoryId } = req.body;
-        // Check if skill with the same name already exists
         const existingSkill = await prisma.skill.findFirst({
             where: {
                 name: {
                     equals: name,
-                    mode: 'insensitive'
-                }
+                    mode: "insensitive",
+                },
             },
         });
         if (existingSkill) {
             throw ErrorTypes.ALREADY_EXISTS("Skill with this name");
         }
-        // Verify service category exists
-        const serviceCategory = await prisma.serviceCategory.findUnique({
-            where: { id: serviceCategoryId },
-        });
-        if (!serviceCategory) {
-            throw ErrorTypes.NOT_FOUND("Service category");
+        if (!categoryAndSubcategoryMatch(serviceCategoryId, serviceSubCategoryId)) {
+            throw new AppError("Service subcategory does not belong to the selected category", 400);
         }
-        // Verify service subcategory exists and belongs to the category
-        const serviceSubCategory = await prisma.serviceSubCategory.findFirst({
-            where: {
-                id: serviceSubCategoryId,
-                serviceCategoryId: serviceCategoryId
-            },
-        });
-        if (!serviceSubCategory) {
-            throw ErrorTypes.NOT_FOUND("Service subcategory or it doesn't belong to the specified category");
-        }
-        // Create the skill
         const skill = await prisma.skill.create({
             data: {
                 name,
                 description,
-                serviceCategoryId,
-                serviceSubCategoryId,
+                serviceCategory: serviceCategoryId,
+                serviceSubCategory: serviceSubCategoryId,
             },
             select: {
                 id: true,
                 name: true,
                 description: true,
-                serviceCategoryId: true,
-                serviceSubCategoryId: true,
+                serviceCategory: true,
+                serviceSubCategory: true,
                 createdAt: true,
                 updatedAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
             },
         });
-        sendSuccess(res, "Skill created successfully", skill, 201);
+        sendSuccess(res, "Skill created successfully", enrichCategoryFields(skill), 201);
     }
     catch (error) {
         handleError(error, res, "Failed to create skill");
@@ -73,61 +46,46 @@ export const createSkill = async (req, res) => {
 export const getSkills = async (req, res) => {
     try {
         const { page, limit, search, serviceCategoryId, serviceSubCategoryId } = req.validatedQuery;
-        // Calculate skip value for pagination
         const skip = (page - 1) * limit;
-        // Build where clause for search and filters
         const whereClause = {};
         if (search) {
             whereClause.OR = [
                 {
                     name: {
                         contains: search,
-                        mode: 'insensitive',
+                        mode: "insensitive",
                     },
                 },
                 {
                     description: {
                         contains: search,
-                        mode: 'insensitive',
+                        mode: "insensitive",
                     },
                 },
             ];
         }
         if (serviceCategoryId) {
-            whereClause.serviceCategoryId = serviceCategoryId;
+            whereClause.serviceCategory = serviceCategoryId;
         }
         if (serviceSubCategoryId) {
-            whereClause.serviceSubCategoryId = serviceSubCategoryId;
+            whereClause.serviceSubCategory = serviceSubCategoryId;
         }
-        // Get skills with pagination
         const [skills, totalCount] = await Promise.all([
             prisma.skill.findMany({
                 where: whereClause,
                 skip,
                 take: limit,
                 orderBy: {
-                    createdAt: 'desc',
+                    createdAt: "desc",
                 },
                 select: {
                     id: true,
                     name: true,
                     description: true,
-                    serviceCategoryId: true,
-                    serviceSubCategoryId: true,
+                    serviceCategory: true,
+                    serviceSubCategory: true,
                     createdAt: true,
                     updatedAt: true,
-                    ServiceCategory: {
-                        select: {
-                            id: true,
-                            name: true,
-                        },
-                    },
-                    ServiceSubCategory: {
-                        select: {
-                            id: true,
-                            name: true,
-                        },
-                    },
                     _count: {
                         select: {
                             UserSkillRelation: true,
@@ -141,12 +99,12 @@ export const getSkills = async (req, res) => {
                 where: whereClause,
             }),
         ]);
-        // Calculate pagination info
+        const skillsOut = skills.map((s) => enrichCategoryFields(s));
         const totalPages = Math.ceil(totalCount / limit);
         const hasNextPage = page < totalPages;
         const hasPrevPage = page > 1;
         sendSuccess(res, "Skills retrieved successfully", {
-            skills,
+            skills: skillsOut,
             pagination: {
                 currentPage: page,
                 totalPages,
@@ -171,24 +129,10 @@ export const getSkillById = async (req, res) => {
                 id: true,
                 name: true,
                 description: true,
-                serviceCategoryId: true,
-                serviceSubCategoryId: true,
+                serviceCategory: true,
+                serviceSubCategory: true,
                 createdAt: true,
                 updatedAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                        description: true,
-                    },
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                        description: true,
-                    },
-                },
                 UserSkillRelation: {
                     select: {
                         id: true,
@@ -229,7 +173,7 @@ export const getSkillById = async (req, res) => {
         if (!skill) {
             throw ErrorTypes.NOT_FOUND("Skill");
         }
-        sendSuccess(res, "Skill retrieved successfully", skill);
+        sendSuccess(res, "Skill retrieved successfully", enrichCategoryFields(skill));
     }
     catch (error) {
         handleError(error, res, "Failed to retrieve skill");
@@ -240,84 +184,52 @@ export const updateSkill = async (req, res) => {
     try {
         const { id } = req.validatedParams;
         const { name, description, serviceCategoryId, serviceSubCategoryId } = req.body;
-        // Check if skill exists
         const existingSkill = await prisma.skill.findUnique({
             where: { id },
         });
         if (!existingSkill) {
             throw ErrorTypes.NOT_FOUND("Skill");
         }
-        // Check if another skill with the same name already exists (excluding current one)
         if (name && name !== existingSkill.name) {
             const duplicateSkill = await prisma.skill.findFirst({
                 where: {
                     name: {
                         equals: name,
-                        mode: 'insensitive'
+                        mode: "insensitive",
                     },
                     id: {
-                        not: id
-                    }
+                        not: id,
+                    },
                 },
             });
             if (duplicateSkill) {
                 throw ErrorTypes.ALREADY_EXISTS("Skill with this name");
             }
         }
-        // Verify service category exists if provided
-        if (serviceCategoryId && serviceCategoryId !== existingSkill.serviceCategoryId) {
-            const serviceCategory = await prisma.serviceCategory.findUnique({
-                where: { id: serviceCategoryId },
-            });
-            if (!serviceCategory) {
-                throw ErrorTypes.NOT_FOUND("Service category");
-            }
+        const nextCategory = serviceCategoryId ?? existingSkill.serviceCategory;
+        const nextSub = serviceSubCategoryId ?? existingSkill.serviceSubCategory;
+        if (!categoryAndSubcategoryMatch(nextCategory, nextSub)) {
+            throw new AppError("Service subcategory does not belong to the selected category", 400);
         }
-        // Verify service subcategory exists and belongs to the category if provided
-        if (serviceSubCategoryId && serviceSubCategoryId !== existingSkill.serviceSubCategoryId) {
-            const finalCategoryId = serviceCategoryId || existingSkill.serviceCategoryId;
-            const serviceSubCategory = await prisma.serviceSubCategory.findFirst({
-                where: {
-                    id: serviceSubCategoryId,
-                    serviceCategoryId: finalCategoryId
-                },
-            });
-            if (!serviceSubCategory) {
-                throw ErrorTypes.NOT_FOUND("Service subcategory or it doesn't belong to the specified category");
-            }
-        }
-        // Update the skill
         const updatedSkill = await prisma.skill.update({
             where: { id },
             data: {
                 ...(name && { name }),
                 ...(description && { description }),
-                ...(serviceCategoryId && { serviceCategoryId }),
-                ...(serviceSubCategoryId && { serviceSubCategoryId }),
+                ...(serviceCategoryId !== undefined && { serviceCategory: serviceCategoryId }),
+                ...(serviceSubCategoryId !== undefined && { serviceSubCategory: serviceSubCategoryId }),
             },
             select: {
                 id: true,
                 name: true,
                 description: true,
-                serviceCategoryId: true,
-                serviceSubCategoryId: true,
+                serviceCategory: true,
+                serviceSubCategory: true,
                 createdAt: true,
                 updatedAt: true,
-                ServiceCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-                ServiceSubCategory: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
             },
         });
-        sendSuccess(res, "Skill updated successfully", updatedSkill);
+        sendSuccess(res, "Skill updated successfully", enrichCategoryFields(updatedSkill));
     }
     catch (error) {
         handleError(error, res, "Failed to update skill");
@@ -327,27 +239,24 @@ export const updateSkill = async (req, res) => {
 export const deleteSkill = async (req, res) => {
     try {
         const { id } = req.validatedParams;
-        // Check if skill exists
         const existingSkill = await prisma.skill.findUnique({
             where: { id },
         });
         if (!existingSkill) {
             throw ErrorTypes.NOT_FOUND("Skill");
         }
-        // Check if skill has related data
         const [userSkillCount, skillToJobRelationCount] = await Promise.all([
             prisma.userSkillRelation.count({
-                where: { skillId: id }
+                where: { skillId: id },
             }),
             prisma.skillToJobRelation.count({
-                where: { skillId: id }
+                where: { skillId: id },
             }),
         ]);
         const hasRelatedData = userSkillCount > 0 || skillToJobRelationCount > 0;
         if (hasRelatedData) {
             throw new AppError("Cannot delete skill that has related user or job association. Please remove all related associations first.", 400);
         }
-        // Delete the skill
         await prisma.skill.delete({
             where: { id },
         });

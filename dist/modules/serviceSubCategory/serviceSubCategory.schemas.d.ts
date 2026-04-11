@@ -1,22 +1,45 @@
 import { z } from "zod";
-declare const createServiceSubCategorySchema: z.ZodObject<{
-    name: z.ZodString;
-    description: z.ZodString;
-    slug: z.ZodOptional<z.ZodString>;
-    orderNumber: z.ZodOptional<z.ZodNumber>;
-    isNew: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
-    serviceCategoryId: z.ZodString;
-}, z.core.$strip>;
-declare const updateServiceSubCategorySchema: z.ZodObject<{
-    name: z.ZodOptional<z.ZodString>;
-    description: z.ZodOptional<z.ZodString>;
-    slug: z.ZodOptional<z.ZodString>;
-    orderNumber: z.ZodOptional<z.ZodNumber>;
-    isNew: z.ZodOptional<z.ZodBoolean>;
-    serviceCategoryId: z.ZodOptional<z.ZodString>;
-}, z.core.$strip>;
 declare const serviceSubCategoryIdSchema: z.ZodObject<{
-    id: z.ZodString;
+    id: z.ZodEnum<{
+        WEB_DEVELOPMENT: "WEB_DEVELOPMENT";
+        MOBILE_DEVELOPMENT: "MOBILE_DEVELOPMENT";
+        DESKTOP_SOFTWARE: "DESKTOP_SOFTWARE";
+        DEVOPS_CLOUD: "DEVOPS_CLOUD";
+        QA_TESTING: "QA_TESTING";
+        GAME_DEVELOPMENT: "GAME_DEVELOPMENT";
+        GRAPHIC_DESIGN: "GRAPHIC_DESIGN";
+        UI_UX_DESIGN: "UI_UX_DESIGN";
+        LOGO_BRANDING: "LOGO_BRANDING";
+        ILLUSTRATION: "ILLUSTRATION";
+        PHOTOGRAPHY_EDITING: "PHOTOGRAPHY_EDITING";
+        SEO_SEM: "SEO_SEM";
+        SOCIAL_MEDIA_MARKETING: "SOCIAL_MEDIA_MARKETING";
+        CONTENT_MARKETING: "CONTENT_MARKETING";
+        EMAIL_MARKETING: "EMAIL_MARKETING";
+        CONTENT_WRITING: "CONTENT_WRITING";
+        TECHNICAL_WRITING: "TECHNICAL_WRITING";
+        TRANSLATION: "TRANSLATION";
+        PROOFREADING: "PROOFREADING";
+        VIDEO_EDITING: "VIDEO_EDITING";
+        MOTION_GRAPHICS: "MOTION_GRAPHICS";
+        ANIMATION_2D_3D: "ANIMATION_2D_3D";
+        AUDIO_PRODUCTION: "AUDIO_PRODUCTION";
+        VOICE_OVER: "VOICE_OVER";
+        MUSIC_COMPOSITION: "MUSIC_COMPOSITION";
+        VIRTUAL_ASSISTANT: "VIRTUAL_ASSISTANT";
+        PROJECT_MANAGEMENT: "PROJECT_MANAGEMENT";
+        DATA_ENTRY: "DATA_ENTRY";
+        DATA_ANALYSIS: "DATA_ANALYSIS";
+        MACHINE_LEARNING: "MACHINE_LEARNING";
+        DATA_ENGINEERING: "DATA_ENGINEERING";
+        DATA_VISUALIZATION: "DATA_VISUALIZATION";
+        LEGAL_CONSULTING: "LEGAL_CONSULTING";
+        ACCOUNTING_BOOKKEEPING: "ACCOUNTING_BOOKKEEPING";
+        FINANCIAL_MODELING: "FINANCIAL_MODELING";
+        ONLINE_TUTORING: "ONLINE_TUTORING";
+        COURSE_CREATION: "COURSE_CREATION";
+        CORPORATE_TRAINING: "CORPORATE_TRAINING";
+    }>;
 }, z.core.$strip>;
 declare const serviceSubCategorySlugSchema: z.ZodObject<{
     slug: z.ZodString;
@@ -25,13 +48,18 @@ declare const getServiceSubCategoriesQuerySchema: z.ZodObject<{
     page: z.ZodPipe<z.ZodOptional<z.ZodString>, z.ZodTransform<number, string | undefined>>;
     limit: z.ZodPipe<z.ZodOptional<z.ZodString>, z.ZodTransform<number, string | undefined>>;
     search: z.ZodOptional<z.ZodString>;
-    serviceCategoryId: z.ZodOptional<z.ZodString>;
+    serviceCategoryId: z.ZodPipe<z.ZodTransform<{} | undefined, unknown>, z.ZodOptional<z.ZodEnum<{
+        PROGRAMMING_AND_TECH: "PROGRAMMING_AND_TECH";
+        DESIGN_AND_CREATIVE: "DESIGN_AND_CREATIVE";
+        DIGITAL_MARKETING: "DIGITAL_MARKETING";
+        WRITING_AND_TRANSLATION: "WRITING_AND_TRANSLATION";
+        VIDEO_AND_ANIMATION: "VIDEO_AND_ANIMATION";
+        MUSIC_AND_AUDIO: "MUSIC_AND_AUDIO";
+        BUSINESS_SUPPORT: "BUSINESS_SUPPORT";
+        DATA_AND_AI: "DATA_AND_AI";
+        LEGAL_AND_FINANCE: "LEGAL_AND_FINANCE";
+        EDUCATION_AND_TRAINING: "EDUCATION_AND_TRAINING";
+    }>>>;
 }, z.core.$strip>;
-declare const reorderServiceSubCategoriesSchema: z.ZodObject<{
-    subCategoryOrders: z.ZodArray<z.ZodObject<{
-        id: z.ZodString;
-        orderNumber: z.ZodNumber;
-    }, z.core.$strip>>;
-}, z.core.$strip>;
-export { createServiceSubCategorySchema, updateServiceSubCategorySchema, serviceSubCategoryIdSchema, serviceSubCategorySlugSchema, getServiceSubCategoriesQuerySchema, reorderServiceSubCategoriesSchema, };
+export { serviceSubCategoryIdSchema, serviceSubCategorySlugSchema, getServiceSubCategoriesQuerySchema, };
 //# sourceMappingURL=serviceSubCategory.schemas.d.ts.map

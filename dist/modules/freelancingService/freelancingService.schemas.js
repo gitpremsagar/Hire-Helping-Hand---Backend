@@ -1,11 +1,13 @@
 import { z } from "zod";
+import { ServiceCategory, ServiceSubCategory } from "@prisma/client";
+import { serviceCategoryIdField, serviceSubCategoryIdField, refineCategoryPair, } from "../../constants/taxonomy-zod.js";
 // Validation schemas for FreelancingService
-const createFreelancingServiceSchema = z.object({
+const createFreelancingServiceSchema = refineCategoryPair(z.object({
     freelancerId: z.string().min(1, "Freelancer ID is required"),
     title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
     description: z.string().min(1, "Description is required").max(5000, "Description must be less than 5000 characters"),
-    serviceCategoryId: z.string().min(1, "Service category ID is required"),
-    serviceSubCategoryId: z.string().min(1, "Service subcategory ID is required"),
+    serviceCategoryId: serviceCategoryIdField,
+    serviceSubCategoryId: serviceSubCategoryIdField,
     basePrice: z.number().min(0, "Base price must be non-negative").optional(),
     currency: z.string().min(3, "Currency must be at least 3 characters").max(3, "Currency must be 3 characters").optional().default("USD"),
     isCustomPricing: z.boolean().optional().default(false),
@@ -32,12 +34,12 @@ const createFreelancingServiceSchema = z.object({
     isCustomizable: z.boolean().optional().default(false),
     customFields: z.any().optional(), // JSON field
     templateOptions: z.any().optional(), // JSON field
-});
-const updateFreelancingServiceSchema = z.object({
+}));
+const updateFreelancingServiceSchema = refineCategoryPair(z.object({
     title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters").optional(),
     description: z.string().min(1, "Description is required").max(5000, "Description must be less than 5000 characters").optional(),
-    serviceCategoryId: z.string().min(1, "Service category ID is required").optional(),
-    serviceSubCategoryId: z.string().min(1, "Service subcategory ID is required").optional(),
+    serviceCategoryId: serviceCategoryIdField.optional(),
+    serviceSubCategoryId: serviceSubCategoryIdField.optional(),
     basePrice: z.number().min(0, "Base price must be non-negative").optional(),
     currency: z.string().min(3, "Currency must be at least 3 characters").max(3, "Currency must be 3 characters").optional(),
     isCustomPricing: z.boolean().optional(),
@@ -72,7 +74,7 @@ const updateFreelancingServiceSchema = z.object({
     status: z.enum(["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "SUSPENDED", "ARCHIVED"]).optional(),
     rejectionReason: z.string().optional(),
     moderationNotes: z.string().optional(),
-});
+}));
 const freelancingServiceIdSchema = z.object({
     id: z.string().min(1, "Freelancing service ID is required"),
 });
@@ -83,8 +85,8 @@ const getFreelancingServicesQuerySchema = z.object({
     page: z.string().optional().transform((val) => val ? parseInt(val, 10) : 1),
     limit: z.string().optional().transform((val) => val ? parseInt(val, 10) : 20),
     search: z.string().optional(),
-    categoryId: z.string().optional(),
-    subCategoryId: z.string().optional(),
+    categoryId: z.preprocess((v) => (v === "" || v === null || v === undefined ? undefined : v), z.nativeEnum(ServiceCategory).optional()),
+    subCategoryId: z.preprocess((v) => (v === "" || v === null || v === undefined ? undefined : v), z.nativeEnum(ServiceSubCategory).optional()),
     freelancerId: z.string().optional(),
     status: z.enum(["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "SUSPENDED", "ARCHIVED"]).optional(),
     minPrice: z.string().optional().transform((val) => val ? parseFloat(val) : undefined),
