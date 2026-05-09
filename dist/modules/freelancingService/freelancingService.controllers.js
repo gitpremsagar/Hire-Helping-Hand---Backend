@@ -23,7 +23,7 @@ export const createFreelancingService = async (req, res) => {
         const baseSlug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         let slug = baseSlug;
         let counter = 1;
-        while (await prisma.freelancingService.findUnique({ where: { slug } })) {
+        while ((await prisma.freelancingService.count({ where: { slug } })) > 0) {
             slug = `${baseSlug}-${counter}`;
             counter++;
         }
@@ -412,7 +412,7 @@ export const updateFreelancingService = async (req, res) => {
                 .replace(/(^-|-$)/g, "");
             let slug = baseSlug;
             let counter = 1;
-            while (await prisma.freelancingService.findUnique({ where: { slug } })) {
+            while ((await prisma.freelancingService.count({ where: { slug } })) > 0) {
                 slug = `${baseSlug}-${counter}`;
                 counter++;
             }
