@@ -1,3 +1,4 @@
+import { ServiceStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError, ErrorTypes, handleError, sendSuccess } from "../../utils/controllerErrorHandler.js";
 import { categoryAndSubcategoryMatch, enrichCategoryFields, } from "../../constants/service-taxonomy.js";
@@ -453,6 +454,73 @@ export const updateFreelancingService = async (req, res) => {
     }
     catch (error) {
         handleError(error, res, "Failed to update freelancing service");
+    }
+};
+// Submit draft (or resubmit rejected) for approval — matches PATCH /:id/publish
+export const publishFreelancingService = async (req, res) => {
+    try {
+        const { id } = req.validatedParams;
+        const userId = req.user?.id;
+        if (!userId) {
+            throw ErrorTypes.UNAUTHORIZED("Access token is required");
+        }
+        const existingService = await prisma.freelancingService.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                freelancerId: true,
+                status: true,
+                title: true,
+            },
+        });
+        if (!existingService) {
+            throw ErrorTypes.NOT_FOUND("Freelancing service");
+        }
+        if (existingService.freelancerId !== userId) {
+            throw ErrorTypes.FORBIDDEN("You can only publish your own services");
+        }
+        if (existingService.status !== ServiceStatus.DRAFT &&
+            existingService.status !== ServiceStatus.REJECTED) {
+            throw new AppError("Only draft or rejected services can be submitted for approval", 400);
+        }
+        if (!existingService.title?.trim()) {
+            throw new AppError("Service title is required before publishing", 400);
+        }
+        const updatedFreelancingService = await prisma.freelancingService.update({
+            where: { id },
+            data: { status: ServiceStatus.PENDING_APPROVAL },
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                slug: true,
+                basePrice: true,
+                currency: true,
+                isCustomPricing: true,
+                deliveryTime: true,
+                revisionPolicy: true,
+                rushDeliveryAvailable: true,
+                rushDeliveryFee: true,
+                deliveryGuarantee: true,
+                isActive: true,
+                status: true,
+                createdAt: true,
+                updatedAt: true,
+                freelancer: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatar: true,
+                    },
+                },
+                serviceCategory: true,
+                serviceSubCategory: true,
+            },
+        });
+        sendSuccess(res, "Service submitted for approval", enrichCategoryFields(updatedFreelancingService));
+    }
+    catch (error) {
+        handleError(error, res, "Failed to publish freelancing service");
     }
 };
 // Delete a freelancing service

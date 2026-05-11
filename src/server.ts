@@ -11,13 +11,15 @@ import skillRoutes from "./modules/skill/skill.routes.js";
 import freelancingServiceRoutes from "./modules/freelancingService/freelancingService.routes.js";
 import freelancerRoutes from "./modules/freelancer/freelancer.routes.js";
 import clientRoutes from "./modules/client/client.routes.js";
+import freelancerBrowseJobsRoutes from "./modules/freelancerBrowseJobs/freelancerBrowseJobs.routes.js";
+import { getCorsOrigins } from "./config/cors-origins.js";
 
 const app = express();
 
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:5173","https://www.hirehelpinghand.com","https://hire-helping-hand-fron-git-e86bff-prem-sagars-projects-34ff8684.vercel.app","https://hire-helping-hand-frontend-kj522zad3.vercel.app"],
+  origin: getCorsOrigins(),
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE","PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
   exposedHeaders: ["Content-Type", "Authorization"],
 }));
@@ -34,6 +36,7 @@ app.use("/api/v1/skills", skillRoutes);
 app.use("/api/v1/freelancing-services", freelancingServiceRoutes);
 app.use("/api/v1/freelancers", freelancerRoutes);
 app.use("/api/v1/clients", clientRoutes);
+app.use("/api/v1/freelancer/browse/jobs", freelancerBrowseJobsRoutes);
 
 app.get("/api/v1", (req, res) => {
   res.send("Hello From API");
