@@ -2,6 +2,8 @@ import "dotenv/config";
 import type { Request, Response } from "express";
 export declare const signUp: (req: Request, res: Response) => Promise<void>;
 export declare const login: (req: Request, res: Response) => Promise<void>;
+/** Same as login but requires ADMIN role before issuing tokens or cookies. */
+export declare const adminLogin: (req: Request, res: Response) => Promise<void>;
 export declare const logout: (req: Request, res: Response) => Promise<void>;
 export declare const refreshToken: (req: Request, res: Response) => Promise<void>;
 export declare const forgotPassword: (req: Request, res: Response) => Promise<void>;

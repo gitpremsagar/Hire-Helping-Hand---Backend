@@ -160,6 +160,34 @@ export const signUp = async (req, res) => {
         handleError(error, res, "Failed to sign up user");
     }
 };
+/** Create refresh + access tokens, set cookie, return JSON (shared by login and admin login). */
+const performLoginSession = async (res, user, successMessage) => {
+    const result = await withTransaction(async (tx) => {
+        const accessToken = generateAccessToken(user.id);
+        const refreshToken = generateRefreshToken(user.id);
+        const expiresAt = getRefreshTokenExpirationDate();
+        await tx.refreshToken.create({
+            data: {
+                userId: user.id,
+                refreshToken,
+                expiresAt,
+            },
+        });
+        return { accessToken, refreshToken };
+    });
+    res.cookie("refreshToken", result.refreshToken, {
+        httpOnly: true,
+        secure: appConfig.cookies.secure,
+        sameSite: appConfig.cookies.sameSite,
+        maxAge: appConfig.cookies.maxAge,
+        path: "/",
+    });
+    const { password: _, ...userWithoutPassword } = user;
+    sendSuccess(res, successMessage, {
+        user: userWithoutPassword,
+        accessToken: result.accessToken,
+    });
+};
 // Login controller with email and password
 export const login = async (req, res) => {
     try {
@@ -180,50 +208,52 @@ export const login = async (req, res) => {
         if (!isPasswordValid) {
             throw ErrorTypes.INVALID_CREDENTIALS();
         }
-        // Use transaction to ensure token creation is atomic
-        const result = await withTransaction(async (tx) => {
-            // Generate access and refresh tokens
-            const accessToken = generateAccessToken(user.id);
-            const refreshToken = generateRefreshToken(user.id);
-            // Save refresh token to database
-            const expiresAt = getRefreshTokenExpirationDate();
-            await tx.refreshToken.create({
-                data: {
-                    userId: user.id,
-                    refreshToken,
-                    expiresAt,
-                },
-            });
-            return {
-                accessToken,
-                refreshToken,
-            };
-        });
-        // Set refresh token as HTTP-only cookie
-        res.cookie("refreshToken", result.refreshToken, {
-            httpOnly: true,
-            secure: appConfig.cookies.secure,
-            sameSite: appConfig.cookies.sameSite,
-            maxAge: appConfig.cookies.maxAge,
-            path: "/",
-        });
-        // Return user data without password
-        const { password: _, ...userWithoutPassword } = user;
-        // console.log(`Sending login success notification email`);
-        // Send login success notification email (non-blocking)
-        // emailService
-        //   .sendLoginSuccessNotification(user.email, user.name)
-        //   .catch((error) => {
-        //     console.error("Failed to send login success notification:", error);
-        //     // Don't throw error to avoid breaking the login flow
-        //   });
-        sendSuccess(res, "Login successful", {
-            user: userWithoutPassword,
-            accessToken: result.accessToken,
-        });
+        await performLoginSession(res, user, "Login successful");
     }
     catch (error) {
         handleError(error, res, "Failed to login");
+    }
+};
+/** Same as login but requires ADMIN role before issuing tokens or cookies. */
+export const adminLogin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await prisma.user.findUnique({
+            where: { email },
+        });
+        if (!user) {
+            throw ErrorTypes.INVALID_CREDENTIALS();
+        }
+        if (user.isDeleted || user.isSuspended || user.isBlocked) {
+            throw ErrorTypes.ACCOUNT_INACTIVE();
+        }
+        const isPasswordValid = await comparePassword(password, user.password);
+        if (!isPasswordValid) {
+            throw ErrorTypes.INVALID_CREDENTIALS();
+        }
+        // const adminRole = await prisma.userAndRoleRelation.findFirst({
+        //   where: {
+        //     userId: user.id,
+        //     role: AppRole.ADMIN,
+        //   },
+        // });
+        // if (!adminRole) {
+        //   throw ErrorTypes.FORBIDDEN("Admin access required");
+        // }
+        const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+        if (user.email !== ADMIN_EMAIL) {
+            throw ErrorTypes.FORBIDDEN("Admin access required");
+        }
+        const adminRole = await prisma.userAndRoleRelation.findFirst({
+            where: {
+                userId: user.id,
+                role: AppRole.ADMIN,
+            },
+        });
+        await performLoginSession(res, user, "Login successful");
+    }
+    catch (error) {
+        handleError(error, res, "Failed to login as admin");
     }
 };
 // Logout controller

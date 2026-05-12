@@ -1,1 +1,1 @@
-{"version":3,"file":"cors-origins.d.ts","sourceRoot":"","sources":["../../src/config/cors-origins.ts"],"names":[],"mappings":"AAaA,wBAAgB,cAAc,IAAI,MAAM,EAAE,CAMzC"}
+{"version":3,"file":"cors-origins.d.ts","sourceRoot":"","sources":["../../src/config/cors-origins.ts"],"names":[],"mappings":"AAcA,wBAAgB,cAAc,IAAI,MAAM,EAAE,CAMzC"}

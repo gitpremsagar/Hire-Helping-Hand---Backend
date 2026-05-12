@@ -101,6 +101,7 @@ export const createFreelancingService = async (req, res) => {
 };
 // Get all freelancing services with pagination and search
 export const getFreelancingServices = async (req, res) => {
+    console.log("getFreelancingServices");
     try {
         const { page, limit, search, categoryId, subCategoryId, freelancerId, status, minPrice, maxPrice, sortBy, sortOrder } = req.validatedQuery;
         // Calculate skip value for pagination
@@ -195,6 +196,7 @@ export const getFreelancingServices = async (req, res) => {
                     isProSeller: true,
                     isFeatured: true,
                     badges: true,
+                    gallery: true,
                     rating: true,
                     ratingCount: true,
                     completionRate: true,

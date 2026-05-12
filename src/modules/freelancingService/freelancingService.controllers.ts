@@ -151,6 +151,7 @@ export const createFreelancingService = async (req: Request, res: Response): Pro
 
 // Get all freelancing services with pagination and search
 export const getFreelancingServices = async (req: Request, res: Response): Promise<void> => {
+  console.log("getFreelancingServices");
   try {
     const { page, limit, search, categoryId, subCategoryId, freelancerId, status, minPrice, maxPrice, sortBy, sortOrder } = (req as any).validatedQuery as {
       page: number;
@@ -267,6 +268,7 @@ export const getFreelancingServices = async (req: Request, res: Response): Promi
           isProSeller: true,
           isFeatured: true,
           badges: true,
+          gallery: true,
           rating: true,
           ratingCount: true,
           completionRate: true,
