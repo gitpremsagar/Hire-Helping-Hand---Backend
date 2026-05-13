@@ -218,7 +218,10 @@ export const requireAdmin = async (req, res, next) => {
                 role: AppRole.ADMIN,
             },
         });
-        if (!userRole) {
+        const configuredAdminEmail = appConfig.email.adminEmail?.trim().toLowerCase();
+        const isPrimaryAdminEmail = Boolean(configuredAdminEmail) &&
+            req.user.email.trim().toLowerCase() === configuredAdminEmail;
+        if (!userRole && !isPrimaryAdminEmail) {
             res.status(403).json({
                 success: false,
                 message: "Admin access required",

@@ -12,6 +12,7 @@ import freelancingServiceRoutes from "./modules/freelancingService/freelancingSe
 import freelancerRoutes from "./modules/freelancer/freelancer.routes.js";
 import clientRoutes from "./modules/client/client.routes.js";
 import freelancerBrowseJobsRoutes from "./modules/freelancerBrowseJobs/freelancerBrowseJobs.routes.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 import { getCorsOrigins } from "./config/cors-origins.js";
 const app = express();
 app.use(cors({
@@ -34,6 +35,7 @@ app.use("/api/v1/freelancing-services", freelancingServiceRoutes);
 app.use("/api/v1/freelancers", freelancerRoutes);
 app.use("/api/v1/clients", clientRoutes);
 app.use("/api/v1/freelancer/browse/jobs", freelancerBrowseJobsRoutes);
+app.use("/api/v1/admin", adminRoutes);
 app.get("/api/v1", (req, res) => {
     res.send("Hello From API");
 });

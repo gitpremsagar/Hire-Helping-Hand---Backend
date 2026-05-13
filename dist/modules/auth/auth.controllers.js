@@ -240,15 +240,23 @@ export const adminLogin = async (req, res) => {
         // if (!adminRole) {
         //   throw ErrorTypes.FORBIDDEN("Admin access required");
         // }
-        const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-        if (user.email !== ADMIN_EMAIL) {
+        const configuredAdminEmail = appConfig.email.adminEmail?.trim();
+        if (!configuredAdminEmail ||
+            user.email.trim().toLowerCase() !== configuredAdminEmail.toLowerCase()) {
             throw ErrorTypes.FORBIDDEN("Admin access required");
         }
-        const adminRole = await prisma.userAndRoleRelation.findFirst({
+        await prisma.userAndRoleRelation.upsert({
             where: {
+                userId_role: {
+                    userId: user.id,
+                    role: AppRole.ADMIN,
+                },
+            },
+            create: {
                 userId: user.id,
                 role: AppRole.ADMIN,
             },
+            update: {},
         });
         await performLoginSession(res, user, "Login successful");
     }
