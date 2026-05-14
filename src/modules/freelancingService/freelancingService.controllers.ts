@@ -269,6 +269,7 @@ export const getFreelancingServices = async (req: Request, res: Response): Promi
           isFeatured: true,
           badges: true,
           gallery: true,
+          videoIntroduction: true,
           rating: true,
           ratingCount: true,
           completionRate: true,

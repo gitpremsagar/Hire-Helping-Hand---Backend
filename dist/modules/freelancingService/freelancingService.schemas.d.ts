@@ -69,7 +69,7 @@ declare const createFreelancingServiceSchema: z.ZodObject<{
     timezone: z.ZodOptional<z.ZodString>;
     availability: z.ZodOptional<z.ZodAny>;
     gallery: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString>>>;
-    videoIntroduction: z.ZodOptional<z.ZodString>;
+    videoIntroduction: z.ZodPipe<z.ZodTransform<{} | undefined, unknown>, z.ZodPipe<z.ZodUnion<readonly [z.ZodUndefined, z.ZodString]>, z.ZodTransform<string | undefined, string | undefined>>>;
     portfolioItems: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString>>>;
     beforeAfterImages: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString>>>;
     features: z.ZodDefault<z.ZodOptional<z.ZodArray<z.ZodString>>>;
@@ -151,7 +151,7 @@ declare const updateFreelancingServiceSchema: z.ZodObject<{
     timezone: z.ZodOptional<z.ZodString>;
     availability: z.ZodOptional<z.ZodAny>;
     gallery: z.ZodOptional<z.ZodArray<z.ZodString>>;
-    videoIntroduction: z.ZodOptional<z.ZodString>;
+    videoIntroduction: z.ZodOptional<z.ZodPipe<z.ZodTransform<{} | null | undefined, unknown>, z.ZodPipe<z.ZodUnion<readonly [z.ZodUndefined, z.ZodNull, z.ZodString]>, z.ZodTransform<string | null | undefined, string | null | undefined>>>>;
     portfolioItems: z.ZodOptional<z.ZodArray<z.ZodString>>;
     beforeAfterImages: z.ZodOptional<z.ZodArray<z.ZodString>>;
     features: z.ZodOptional<z.ZodArray<z.ZodString>>;

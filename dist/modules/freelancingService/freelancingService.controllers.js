@@ -197,6 +197,7 @@ export const getFreelancingServices = async (req, res) => {
                     isFeatured: true,
                     badges: true,
                     gallery: true,
+                    videoIntroduction: true,
                     rating: true,
                     ratingCount: true,
                     completionRate: true,

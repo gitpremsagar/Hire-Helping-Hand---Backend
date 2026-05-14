@@ -1,6 +1,65 @@
 import { z } from "zod";
 import { ServiceCategory, ServiceSubCategory } from "@prisma/client";
 import { serviceCategoryIdField, serviceSubCategoryIdField, refineCategoryPair, } from "../../constants/taxonomy-zod.js";
+import { canonicalYoutubeEmbedUrl, parseYoutubeVideoIdFromInput, } from "../../utils/youtubeVideoIntroduction.js";
+/** Create: omit, empty string, or valid YouTube URL / iframe → canonical embed URL or undefined. */
+const videoIntroductionCreateField = z.preprocess((val) => {
+    if (val === null || val === undefined)
+        return undefined;
+    if (typeof val !== "string")
+        return val;
+    const t = val.trim();
+    return t === "" ? undefined : t;
+}, z
+    .union([z.undefined(), z.string().max(20000)])
+    .superRefine((val, ctx) => {
+    if (val === undefined)
+        return;
+    if (!parseYoutubeVideoIdFromInput(val)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "videoIntroduction must be a valid YouTube URL or iframe embed code",
+            path: [],
+        });
+    }
+})
+    .transform((val) => {
+    if (val === undefined)
+        return undefined;
+    const id = parseYoutubeVideoIdFromInput(val);
+    return canonicalYoutubeEmbedUrl(id);
+}));
+/** Update: omit; null or "" clears; otherwise normalize to embed URL. */
+const videoIntroductionUpdateField = z.preprocess((val) => {
+    if (val === undefined)
+        return undefined;
+    if (val === null)
+        return null;
+    if (typeof val !== "string")
+        return val;
+    const t = val.trim();
+    return t === "" ? null : t;
+}, z
+    .union([z.undefined(), z.null(), z.string().max(20000)])
+    .superRefine((val, ctx) => {
+    if (val === undefined || val === null)
+        return;
+    if (!parseYoutubeVideoIdFromInput(val)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "videoIntroduction must be a valid YouTube URL or iframe embed code",
+            path: [],
+        });
+    }
+})
+    .transform((val) => {
+    if (val === undefined)
+        return undefined;
+    if (val === null)
+        return null;
+    const id = parseYoutubeVideoIdFromInput(val);
+    return canonicalYoutubeEmbedUrl(id);
+}));
 // Validation schemas for FreelancingService
 const createFreelancingServiceSchema = refineCategoryPair(z.object({
     freelancerId: z.string().min(1, "Freelancer ID is required"),
@@ -22,7 +81,7 @@ const createFreelancingServiceSchema = refineCategoryPair(z.object({
     timezone: z.string().optional(),
     availability: z.any().optional(), // JSON field
     gallery: z.array(z.string()).optional().default([]),
-    videoIntroduction: z.string().optional(),
+    videoIntroduction: videoIntroductionCreateField,
     portfolioItems: z.array(z.string()).optional().default([]),
     beforeAfterImages: z.array(z.string()).optional().default([]),
     features: z.array(z.string()).optional().default([]),
@@ -54,7 +113,7 @@ const updateFreelancingServiceSchema = refineCategoryPair(z.object({
     timezone: z.string().optional(),
     availability: z.any().optional(), // JSON field
     gallery: z.array(z.string()).optional(),
-    videoIntroduction: z.string().optional(),
+    videoIntroduction: videoIntroductionUpdateField.optional(),
     portfolioItems: z.array(z.string()).optional(),
     beforeAfterImages: z.array(z.string()).optional(),
     features: z.array(z.string()).optional(),
