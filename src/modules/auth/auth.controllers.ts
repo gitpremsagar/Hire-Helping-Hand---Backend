@@ -224,13 +224,18 @@ const performLoginSession = async (
     return { accessToken, refreshToken };
   });
 
-  res.cookie("refreshToken", result.refreshToken, {
+  const cookieOpts = {
     httpOnly: true,
     secure: appConfig.cookies.secure,
     sameSite: appConfig.cookies.sameSite,
     maxAge: appConfig.cookies.maxAge,
     path: "/",
-  });
+  };
+  res.cookie("refreshToken", result.refreshToken, cookieOpts);
+
+  // #region agent log
+  fetch('http://127.0.0.1:7406/ingest/40ae5950-4682-49ea-8699-f38e2c2550b6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'45fb50'},body:JSON.stringify({sessionId:'45fb50',location:'auth.controllers.ts:performLoginSession',message:'refresh cookie set on login',data:{cookieOpts,nodeEnv:process.env.NODE_ENV,origin:undefined},timestamp:Date.now(),hypothesisId:'H1-H2'})}).catch(()=>{});
+  // #endregion
 
   const { password: _, ...userWithoutPassword } = user;
 
@@ -368,6 +373,10 @@ export const refreshToken = async (
   try {
     // Get refresh token from HTTP-only cookie
     const refreshToken = req.cookies?.refreshToken;
+
+    // #region agent log
+    fetch('http://127.0.0.1:7406/ingest/40ae5950-4682-49ea-8699-f38e2c2550b6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'45fb50'},body:JSON.stringify({sessionId:'45fb50',location:'auth.controllers.ts:refreshToken',message:'refresh endpoint hit',data:{hasRefreshCookie:!!refreshToken,cookieKeys:Object.keys(req.cookies||{}),origin:req.headers.origin,referer:req.headers.referer,cookieSameSite:appConfig.cookies.sameSite,cookieSecure:appConfig.cookies.secure},timestamp:Date.now(),hypothesisId:'H1-H3-H5'})}).catch(()=>{});
+    // #endregion
 
     if (!refreshToken) {
       throw ErrorTypes.VALIDATION_ERROR("Refresh token is required");
