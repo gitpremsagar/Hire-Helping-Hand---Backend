@@ -169,11 +169,7 @@ const performLoginSession = async (res, user, successMessage) => {
         });
         return { accessToken, refreshToken };
     });
-    const cookieOpts = getRefreshTokenCookieOptions();
-    res.cookie("refreshToken", result.refreshToken, cookieOpts);
-    // #region agent log
-    fetch('http://127.0.0.1:7406/ingest/40ae5950-4682-49ea-8699-f38e2c2550b6', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '45fb50' }, body: JSON.stringify({ sessionId: '45fb50', runId: 'post-fix', location: 'auth.controllers.ts:performLoginSession', message: 'refresh cookie set on login', data: { cookieOpts, nodeEnv: process.env.NODE_ENV }, timestamp: Date.now(), hypothesisId: 'H1-H2' }) }).catch(() => { });
-    // #endregion
+    res.cookie("refreshToken", result.refreshToken, getRefreshTokenCookieOptions());
     const { password: _, ...userWithoutPassword } = user;
     sendSuccess(res, successMessage, {
         user: userWithoutPassword,
@@ -280,9 +276,6 @@ export const refreshToken = async (req, res) => {
     try {
         // Get refresh token from HTTP-only cookie
         const refreshToken = req.cookies?.refreshToken;
-        // #region agent log
-        fetch('http://127.0.0.1:7406/ingest/40ae5950-4682-49ea-8699-f38e2c2550b6', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '45fb50' }, body: JSON.stringify({ sessionId: '45fb50', runId: 'post-fix', location: 'auth.controllers.ts:refreshToken', message: 'refresh endpoint hit', data: { hasRefreshCookie: !!refreshToken, cookieKeys: Object.keys(req.cookies || {}), origin: req.headers.origin, cookieSameSite: appConfig.cookies.sameSite, cookieSecure: appConfig.cookies.secure }, timestamp: Date.now(), hypothesisId: 'H1-H3-H5' }) }).catch(() => { });
-        // #endregion
         if (!refreshToken) {
             throw ErrorTypes.VALIDATION_ERROR("Refresh token is required");
         }
