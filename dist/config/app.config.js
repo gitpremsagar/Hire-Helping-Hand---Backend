@@ -1,4 +1,8 @@
 import "dotenv/config";
+const isProduction = process.env.NODE_ENV === "production";
+/** Cross-origin SPA + API (e.g. hirehelpinghand.com → vercel.app) requires SameSite=None. */
+const refreshTokenSameSite = process.env.COOKIE_SAME_SITE ??
+    (isProduction ? "none" : "lax");
 /**
  * Application configuration for authentication and security settings
  */
@@ -34,10 +38,10 @@ export const appConfig = {
     },
     // Cookie configuration (for future use)
     cookies: {
-        // Secure cookie settings
-        secure: process.env.NODE_ENV === "production",
+        // Secure cookie settings (required when sameSite is "none")
+        secure: isProduction,
         httpOnly: true,
-        sameSite: process.env.COOKIE_SAME_SITE || "lax",
+        sameSite: refreshTokenSameSite,
         // Cookie expiration (should match refresh token expiration)
         maxAge: process.env.COOKIE_MAX_AGE_DAYS
             ? parseInt(process.env.COOKIE_MAX_AGE_DAYS) * 24 * 60 * 60 * 1000 // Convert days to milliseconds
@@ -80,6 +84,21 @@ export const appConfig = {
         apiPrefix: process.env.API_PREFIX || "/api/v1",
     },
 };
+/** Shared options for the HTTP-only refresh token cookie. */
+export const getRefreshTokenCookieOptions = () => ({
+    httpOnly: appConfig.cookies.httpOnly,
+    secure: appConfig.cookies.secure,
+    sameSite: appConfig.cookies.sameSite,
+    maxAge: appConfig.cookies.maxAge,
+    path: "/",
+});
+/** Options for clearing the refresh token cookie (must match set options). */
+export const getRefreshTokenClearCookieOptions = () => ({
+    httpOnly: appConfig.cookies.httpOnly,
+    secure: appConfig.cookies.secure,
+    sameSite: appConfig.cookies.sameSite,
+    path: "/",
+});
 /**
  * Validates that all required environment variables are present
  */

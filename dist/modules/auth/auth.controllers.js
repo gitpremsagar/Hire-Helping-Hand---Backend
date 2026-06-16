@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import { AppRole } from "@prisma/client";
 import { prisma, withTransaction } from "../../lib/prisma.js";
 import { AppError, ErrorTypes, handleError, sendSuccess, } from "../../utils/controllerErrorHandler.js";
-import { appConfig, getRefreshTokenExpirationDate, } from "../../config/app.config.js";
+import { appConfig, getRefreshTokenClearCookieOptions, getRefreshTokenCookieOptions, getRefreshTokenExpirationDate, } from "../../config/app.config.js";
 import { emailService } from "../../utils/emailService.js";
 // Helper function to generate access token
 const generateAccessToken = (userId) => {
@@ -124,13 +124,7 @@ export const signUp = async (req, res) => {
             };
         });
         // Set refresh token as HTTP-only cookie
-        res.cookie("refreshToken", result.refreshToken, {
-            httpOnly: true,
-            secure: appConfig.cookies.secure,
-            sameSite: appConfig.cookies.sameSite,
-            maxAge: appConfig.cookies.maxAge,
-            path: "/",
-        });
+        res.cookie("refreshToken", result.refreshToken, getRefreshTokenCookieOptions());
         // Generate email verification token
         if (!appConfig.jwt.emailVerificationToken.secret) {
             throw ErrorTypes.JWT_SECRET_MISSING();
@@ -175,16 +169,10 @@ const performLoginSession = async (res, user, successMessage) => {
         });
         return { accessToken, refreshToken };
     });
-    const cookieOpts = {
-        httpOnly: true,
-        secure: appConfig.cookies.secure,
-        sameSite: appConfig.cookies.sameSite,
-        maxAge: appConfig.cookies.maxAge,
-        path: "/",
-    };
+    const cookieOpts = getRefreshTokenCookieOptions();
     res.cookie("refreshToken", result.refreshToken, cookieOpts);
     // #region agent log
-    fetch('http://127.0.0.1:7406/ingest/40ae5950-4682-49ea-8699-f38e2c2550b6', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '45fb50' }, body: JSON.stringify({ sessionId: '45fb50', location: 'auth.controllers.ts:performLoginSession', message: 'refresh cookie set on login', data: { cookieOpts, nodeEnv: process.env.NODE_ENV, origin: undefined }, timestamp: Date.now(), hypothesisId: 'H1-H2' }) }).catch(() => { });
+    fetch('http://127.0.0.1:7406/ingest/40ae5950-4682-49ea-8699-f38e2c2550b6', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '45fb50' }, body: JSON.stringify({ sessionId: '45fb50', runId: 'post-fix', location: 'auth.controllers.ts:performLoginSession', message: 'refresh cookie set on login', data: { cookieOpts, nodeEnv: process.env.NODE_ENV }, timestamp: Date.now(), hypothesisId: 'H1-H2' }) }).catch(() => { });
     // #endregion
     const { password: _, ...userWithoutPassword } = user;
     sendSuccess(res, successMessage, {
@@ -280,12 +268,7 @@ export const logout = async (req, res) => {
             });
         }
         // Clear the refresh token cookie
-        res.clearCookie("refreshToken", {
-            httpOnly: true,
-            secure: appConfig.cookies.secure,
-            sameSite: appConfig.cookies.sameSite,
-            path: "/",
-        });
+        res.clearCookie("refreshToken", getRefreshTokenClearCookieOptions());
         sendSuccess(res, "Logout successful");
     }
     catch (error) {
@@ -298,7 +281,7 @@ export const refreshToken = async (req, res) => {
         // Get refresh token from HTTP-only cookie
         const refreshToken = req.cookies?.refreshToken;
         // #region agent log
-        fetch('http://127.0.0.1:7406/ingest/40ae5950-4682-49ea-8699-f38e2c2550b6', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '45fb50' }, body: JSON.stringify({ sessionId: '45fb50', location: 'auth.controllers.ts:refreshToken', message: 'refresh endpoint hit', data: { hasRefreshCookie: !!refreshToken, cookieKeys: Object.keys(req.cookies || {}), origin: req.headers.origin, referer: req.headers.referer, cookieSameSite: appConfig.cookies.sameSite, cookieSecure: appConfig.cookies.secure }, timestamp: Date.now(), hypothesisId: 'H1-H3-H5' }) }).catch(() => { });
+        fetch('http://127.0.0.1:7406/ingest/40ae5950-4682-49ea-8699-f38e2c2550b6', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '45fb50' }, body: JSON.stringify({ sessionId: '45fb50', runId: 'post-fix', location: 'auth.controllers.ts:refreshToken', message: 'refresh endpoint hit', data: { hasRefreshCookie: !!refreshToken, cookieKeys: Object.keys(req.cookies || {}), origin: req.headers.origin, cookieSameSite: appConfig.cookies.sameSite, cookieSecure: appConfig.cookies.secure }, timestamp: Date.now(), hypothesisId: 'H1-H3-H5' }) }).catch(() => { });
         // #endregion
         if (!refreshToken) {
             throw ErrorTypes.VALIDATION_ERROR("Refresh token is required");
@@ -369,13 +352,7 @@ export const refreshToken = async (req, res) => {
             };
         });
         // Set new refresh token as HTTP-only cookie
-        res.cookie("refreshToken", result.refreshToken, {
-            httpOnly: true,
-            secure: appConfig.cookies.secure,
-            sameSite: appConfig.cookies.sameSite,
-            maxAge: appConfig.cookies.maxAge,
-            path: "/",
-        });
+        res.cookie("refreshToken", result.refreshToken, getRefreshTokenCookieOptions());
         sendSuccess(res, "Token refreshed successfully", {
             user: result.user,
             accessToken: result.accessToken,
